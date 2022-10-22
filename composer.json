@@ -1,0 +1,8 @@
+{
+  "require": {
+    "symfony/css-selector": "v6.1.*",
+    "symfony/dom-crawler": "v6.1.*",
+    "ext-zlib": "*",
+    "guzzlehttp/guzzle": "7.4.*"
+  }
+}
