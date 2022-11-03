@@ -1,5 +1,6 @@
 <?php
 use Core2\Mod\Jobs;
+use Symfony\Component\DomCrawler\Crawler;
 
 require_once DOC_ROOT . 'core2/inc/classes/Common.php';
 require_once "classes/autoload.php";
@@ -290,9 +291,9 @@ class ModJobsCli extends Common {
                                         'url'     => $page['url'],
                                         'content' => $page['content'],
                                         'options' => [
-                                            'category_name'  => $profession_name,
-                                            'category_title' => $profession['title'],
-                                            'search_status'  => 'passive',
+                                            'profession_name'  => $profession_name,
+                                            'profession_title' => $profession['title'],
+                                            'search_status'    => 'passive',
                                         ],
                                     ]);
                                 }
@@ -369,67 +370,85 @@ class ModJobsCli extends Common {
                     $page_vacancies = $this->modJobs->dataJobsPages->getRowsByTypeStatus($source_name, ['vacancies_categories', 'vacancies_professions'], 'pending');
 
                     foreach ($page_vacancies as $page) {
-//                        $page->status = 'process';
-//                        $page->save();
+                        $page->status = 'process';
+                        $page->save();
 
+                        $error_messages = [];
 
                         try {
                             $page_content = gzuncompress($page->content);
                             $page_options = $page->options ? json_decode($page->options, true) : [];
                             $page_options['date_created'] = $page->date_created;
 
-                            $parse_result = $source_class->parseVacanciesList($page_content);
+                            $parse_page = $source_class->parseVacanciesList($page_content);
 
-                            if ( ! empty($parse_result['vacancies'])) {
-                                foreach ($parse_result['vacancies'] as $vacancy) {
+                            if ( ! empty($parse_page['vacancies'])) {
+                                foreach ($parse_page['vacancies'] as $vacancy) {
                                     $this->db->beginTransaction();
                                     try {
                                         $model->saveVacancy((int)$source->id, $vacancy, $page_options);
                                         $this->db->commit();
                                     } catch (\Exception $e) {
                                         $this->db->rollback();
-                                        echo $e->getMessage() . PHP_EOL;
+                                        $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
                                     }
                                 }
                             }
 
-//                            $page->status = 'complete';
-//                            $page->save();
+                            $model->saveSummary($parse_page, $page_options);
+
+                            $page->status = 'complete';
+                            $page->note   = implode(PHP_EOL.PHP_EOL, $error_messages);
+                            $page->save();
+
 
                         } catch (\Exception $e) {
                             $page->status = 'error';
-                            $page->note   = $e->getMessage();
+                            $page->note   = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
                             $page->save();
                         }
-                        break;
                     }
 
-                    continue;
                     $pages_resume = $this->modJobs->dataJobsPages->getRowsByTypeStatus($source_name, ['resume_categories', 'resume_professions'], 'pending');
 
                     foreach ($pages_resume as $page) {
-//                        $page->status = 'process';
-//                        $page->save();
+                        $page->status = 'process';
+                        $page->save();
+
+                        $error_messages = [];
 
                         try {
                             $page_content = gzuncompress($page->content);
                             $page_options = $page->options ? json_decode($page->options, true) : [];
                             $page_options['date_created'] = $page->date_created;
 
-                            $parse_result = $source_class->parseResumeList($page_content, $page_options);
+                            $parse_page = $source_class->parseResumeList($page_content, $page_options);
 
-                            if ( ! empty($parse_result['resume'])) {
-                                foreach ($parse_result['resume'] as $resume) {
-                                    $model->saveResume((int)$source->id, $resume, $page_options);
+
+                            if ( ! empty($parse_page['resume'])) {
+                                foreach ($parse_page['resume'] as $resume) {
+                                    $this->db->beginTransaction();
+                                    try {
+                                        $model->saveResume((int)$source->id, $resume, $page_options);
+                                        $this->db->commit();
+                                    } catch (\Exception $e) {
+                                        $this->db->rollback();
+                                        $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                    }
                                 }
                             }
 
+
+                            $model->saveSummary($parse_page, $page_options);
+
                             $page->status = 'complete';
+                            $page->note   = implode(PHP_EOL.PHP_EOL, $error_messages);
                             $page->save();
+
 
                         } catch (\Exception $e) {
                             $page->status = 'error';
-                            $page->note   = $e->getMessage();
+                            $page->note   = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
                             $page->save();
                         }
                     }
@@ -442,27 +461,61 @@ class ModJobsCli extends Common {
     /**
      * Закрытие неактивных вакансий и резюме
      * @return void
+     * @throws Zend_Db_Table_Exception
      */
     public function closedVacanciesResume(): void {
 
+        // Вакансии
+        $vacancies = $this->db->fetchAll("
+            SELECT jev.id,
+                   (SELECT jeva.date_activity
+                    FROM mod_jobs_employers_vacancies_activity AS jeva 
+                    WHERE jev.id = jeva.vacancy_id
+                    ORDER BY jeva.date_activity DESC
+                    LIMIT 1) AS date_last_activity
+            
+            FROM mod_jobs_employers_vacancies AS jev
+            WHERE jev.date_close IS NULL
+              AND (SELECT jeva.date_activity
+                   FROM mod_jobs_employers_vacancies_activity AS jeva 
+                   WHERE jev.id = jeva.vacancy_id
+                   ORDER BY jeva.date_activity DESC
+                   LIMIT 1) <= DATE_SUB(NOW(), INTERVAL 5 DAY)
+        ");
+
+
+        foreach ($vacancies as $vacancy) {
+
+            $vacancy_row = $this->modJobs->dataJobsEmployersVacancies->find($vacancy['id'])->current();
+            $vacancy_row->date_close = $vacancy['date_last_activity'];
+            $vacancy_row->save();
+        }
+
+
+        // Резюме
+        $resume_items = $this->db->fetchAll("
+            SELECT jr.id,
+                   (SELECT jra.date_activity
+                    FROM mod_jobs_resume_activity AS jra 
+                    WHERE jr.id = jra.resume_id
+                    ORDER BY jra.date_activity DESC
+                    LIMIT 1) AS date_last_activity
+            
+            FROM mod_jobs_resume AS jr
+            WHERE jr.date_close IS NULL
+              AND (SELECT jra.date_activity
+                   FROM mod_jobs_resume_activity AS jra 
+                   WHERE jr.id = jra.resume_id
+                   ORDER BY jra.date_activity DESC
+                   LIMIT 1) <= DATE_SUB(NOW(), INTERVAL 5 DAY)
+        ");
+
+
+        foreach ($resume_items as $resume) {
+
+            $resume_row = $this->modJobs->dataJobsResume->find($resume['id'])->current();
+            $resume_row->date_close = $resume['date_last_activity'];
+            $resume_row->save();
+        }
     }
-
-
-//    public function zipContent() {
-//
-//        $pages_id = $this->db->fetchCol("
-//            SELECT id
-//            FROM mod_jobs_pages
-//            WHERE is_zip_sw IS NULL
-//        ");
-//
-//
-//        foreach ($pages_id as $page_id) {
-//
-//            $page = $this->modJobs->dataJobsPages->find($page_id)->current();
-//            $page->content   = gzcompress($page->content);
-//            $page->is_zip_sw = 1;
-//            $page->save();
-//        }
-//    }
 }

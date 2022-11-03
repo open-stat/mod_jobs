@@ -31,14 +31,15 @@ class JobsPages extends \Zend_Db_Table_Abstract {
      * @param int    $limit
      * @return Zend_Db_Table_Rowset_Abstract
      */
-    public function getRowsByTypeStatus(string $source_name, array $type, string $status, int $limit = 300): Zend_Db_Table_Rowset_Abstract {
+    public function getRowsByTypeStatus(string $source_name, array $type, string $status, int $limit = 10000): Zend_Db_Table_Rowset_Abstract {
 
         $select = $this->select()
             ->where("source_name = ?", $source_name)
             ->where("type IN(?)", $type)
             ->where("status = ?", $status)
             ->limit($limit)
-            ->order('date_created ASC');
+            ->order('date_created ASC')
+            ->order('id ASC');
 
         return $this->fetchAll($select);
     }
@@ -62,7 +63,7 @@ class JobsPages extends \Zend_Db_Table_Abstract {
             'type'        => $type,
             'status'      => 'pending',
             'url'         => $page['url'],
-            'content'     => gzcompress($page['content']),
+            'content'     => gzcompress($page['content'], 9),
             'options'     => ! empty($page['options']) ? json_encode($page['options']) : null,
         ]);
 

@@ -55,6 +55,7 @@ class JobsResume extends \Zend_Db_Table_Abstract {
 
 
     /**
+     * @param int    $source_id
      * @param string $status
      * @return Zend_Db_Table_Rowset_Abstract
      */
@@ -65,5 +66,40 @@ class JobsResume extends \Zend_Db_Table_Abstract {
             ->where("status_parse = ?", $status);
 
         return $this->fetchAll($select);
+    }
+
+
+    /**
+     * @param int    $source_id
+     * @param string $url
+     * @return Zend_Db_Table_Row_Abstract|null
+     */
+    public function getRowBySourceUrl(int $source_id, string $url): ?Zend_Db_Table_Row_Abstract {
+
+        $select = $this->select()
+            ->where("source_id = ?", $source_id)
+            ->where("url = ?", $url)
+            ->order("date_publish DESC")
+            ->limit(1);
+
+        return $this->fetchRow($select);
+    }
+
+
+    /**
+     * @param int      $source_id
+     * @param string   $url
+     * @param DateTime $date
+     * @return Zend_Db_Table_Row_Abstract|null
+     */
+    public function getRowBySourceUrlDate(int $source_id, string $url, \DateTime $date): ?Zend_Db_Table_Row_Abstract {
+
+        $select = $this->select()
+            ->where("source_id = ?", $source_id)
+            ->where("url = ?", $url)
+            ->where("IF (date_close IS NOT NULL, ? BETWEEN date_publish AND date_close, 0)", $date->format('Y-m-d'))
+            ->limit(1);
+
+        return $this->fetchRow($select);
     }
 }

@@ -149,11 +149,12 @@ class RabotaBy extends Index\Source {
 
         $dom    = new Crawler($content);
         $result = [
-            'site_vacancies'    => null,
-            'site_employers'    => null,
-            'site_week_invites' => null,
-            'vacancies_found'   => null,
-            'vacancies'         => [],
+            'total_vacancies'    => null,
+            'total_resume'       => null,
+            'total_employers'    => null,
+            'total_week_invites' => null,
+            'vacancies_found'    => null,
+            'vacancies'          => [],
         ];
 
         $header = $this->filter($dom, 'h1.bloko-header-section-3');
@@ -177,14 +178,13 @@ class RabotaBy extends Index\Source {
                 $region        = $this->filter($vacancy_dom, 'div[data-qa="vacancy-serp__vacancy-address"]')->first();
                 $money         = $this->filter($vacancy_dom, 'span.bloko-header-section-3[data-qa="vacancy-serp__vacancy-compensation"]')->first();
 
-                $money_text      = $money->count() > 0 ? $money->text() : '';
                 $salary_min      = null;
                 $salary_max      = null;
                 $currency        = null;
                 $currency_origin = null;
 
-                if ($money_text) {
-                    $money_text = preg_replace("~( |&nbsp;|\h)~ui", '', $money_text);
+                if ($money->count() > 0) {
+                    $money_text = preg_replace("~( |&nbsp;|\h)~ui", '', $money->text());
 
                     if (preg_match('~(?<min>\d+)\s*–\s*(?<max>\d+)\s*(?<currency>.*)~ui', $money_text, $matches)) {
                         $salary_min      = $matches['min'];
@@ -218,31 +218,48 @@ class RabotaBy extends Index\Source {
                     });
                 }
 
-                $url = $title->attr('href');
-                $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
-                $url = preg_replace('~\?.*~ui', '', $url);
 
-                $employer_url = $employer_link->attr('href');
-                $employer_url = $this->getDomain($employer_url) ? $employer_url : "{$this->base_url}{$employer_url}";
-                $employer_url = preg_replace('~\?.*~ui', '', $employer_url);
+                $title_text = null;
+                $url        = null;
 
-                $employer_title = preg_replace("~( |&nbsp;|\h)~ui", ' ', $employer_link->text());
+                if ($title->count() > 0) {
+                    $title_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $title->text());
+                    $title_text = trim($title_text, "\t\n\r\0 .,-");
+
+                    $url = $title->attr('href');
+                    $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
+                    $url = preg_replace('~\?.*~ui', '', $url);
+                    $url = trim($url);
+                }
+
+                $employer_url   = null;
+                $employer_title = null;
+
+                if ($employer_link->count() > 0) {
+                    $employer_url = $employer_link->attr('href');
+                    $employer_url = $this->getDomain($employer_url) ? $employer_url : "{$this->base_url}{$employer_url}";
+                    $employer_url = preg_replace('~\?.*~ui', '', $employer_url);
+                    $employer_url = trim($employer_url);
+
+                    $employer_title = preg_replace("~( |&nbsp;|\h)~ui", ' ', $employer_link->text());
+                }
+
 
                 $region_text = explode(',', $region->text());
                 $region_text = trim($region_text[0], ', ');
 
                 return [
-                    'title'           => trim($title->text()),
-                    'url'             => trim($url),
-                    'region'          => $region_text,
+                    'title'           => $this->cleanText($title_text),
+                    'url'             => $url,
+                    'region'          => $this->cleanText($region_text),
                     'salary_min'      => $salary_min,
                     'salary_max'      => $salary_max,
                     'currency'        => $currency,
-                    'currency_origin' => $currency_origin,
+                    'currency_origin' => $this->cleanText($currency_origin),
                     'labels'          => $labels_title,
-                    'description'     => $description->count() > 0 ? trim($description->text()) : '',
-                    'employer_title'  => trim($employer_title),
-                    'employer_url'    => trim($employer_url),
+                    'description'     => $description->count() > 0 ? $this->cleanText($description->text()) : '',
+                    'employer_title'  => $this->cleanText($employer_title),
+                    'employer_url'    => $employer_url,
                 ];
             });
         }
@@ -254,17 +271,22 @@ class RabotaBy extends Index\Source {
             preg_match('~(\d*)\s+ваканси~ui', $stat->text(), $matches);
 
             if ( ! empty($matches[1])) {
-                $result['site_vacancies'] = $matches[1];
+                $result['total_vacancies'] = $matches[1];
             }
 
             preg_match('~(\d*)\s+компани~ui', $stat->text(), $matches);
             if ( ! empty($matches[1])) {
-                $result['site_employers'] = $matches[1];
+                $result['total_employers'] = $matches[1];
+            }
+
+            preg_match('~(\d*)\s+резюме~ui', $stat->text(), $matches);
+            if ( ! empty($matches[1])) {
+                $result['total_resume'] = $matches[1];
             }
 
             preg_match('~(\d*)\s+приглашени~ui', $stat->text(), $matches);
             if ( ! empty($matches[1])) {
-                $result['site_week_invites'] = $matches[1];
+                $result['total_week_invites'] = $matches[1];
             }
         }
 
@@ -282,12 +304,13 @@ class RabotaBy extends Index\Source {
 
         $dom    = new Crawler($content);
         $result = [
-            'site_vacancies'    => null,
-            'site_employers'    => null,
-            'site_week_invites' => null,
-            'people_found'      => null,
-            'resume_found'      => null,
-            'resume'            => [],
+            'total_vacancies'    => null,
+            'total_resume'       => null,
+            'total_employers'    => null,
+            'total_week_invites' => null,
+            'people_found'       => null,
+            'resume_found'       => null,
+            'resume'             => [],
         ];
 
         $header = $this->filter($dom, 'h1.bloko-header-section-3');
@@ -323,13 +346,12 @@ class RabotaBy extends Index\Source {
                 $last_employer_period = $this->filter($vacancy_dom, '[data-qa="resume-serp_resume-item-content"] span')->last();
                 $date_last_update     = $this->filter($vacancy_dom, 'span .bloko-text')->first();
 
-                $money_text      = $money->count() > 0 ? $money->text() : '';
                 $salary          = null;
                 $currency        = null;
                 $currency_origin = null;
 
-                if ($money_text) {
-                    $money_text = preg_replace("~( |&nbsp;|\h)~ui", '', $money_text);
+                if ($money->count() > 0) {
+                    $money_text = preg_replace("~( |&nbsp;|\h)~ui", '', $money->text());
 
                     if (preg_match('~(?<solary>\d+)\s*(?<currency>.*)~ui', $money_text, $matches)) {
                         $salary          = $matches['solary'];
@@ -347,7 +369,11 @@ class RabotaBy extends Index\Source {
                     $currency = 'USD';
                 }
 
-                preg_match('~(\d*)~ui', $age->text(), $matches_age);
+                $age_text = null;
+                if ($age->count() > 0) {
+                    preg_match('~(\d*)~ui', $age->text(), $matches);
+                    $age_text = $matches[1];
+                }
 
                 $labels_title = [];
                 if ($labels->count() > 0) {
@@ -356,12 +382,18 @@ class RabotaBy extends Index\Source {
                         return trim($label_text);
                     });
                 }
-                preg_match('~(\d*)~ui', $age->text(), $matches_age);
+
+                $experience_text = $experience->count() > 0
+                    ? preg_replace("~( |&nbsp;|\h)~ui", ' ', $experience->text())
+                    : '';
 
 
-                $experience_text       = preg_replace("~( |&nbsp;|\h)~ui", ' ', $experience->text());
-                $date_last_update_text = preg_replace("~Обновлено~ui", '', $date_last_update->text());
-                $date_last_update_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $date_last_update_text);
+                if ($date_last_update->count() > 0) {
+                    $date_last_update_text = preg_replace("~Обновлено~ui", '', $date_last_update->text());
+                    $date_last_update_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $date_last_update_text);
+                } else {
+                    $date_last_update_text = '';
+                }
 
 
                 $date_last_update = null;
@@ -404,31 +436,39 @@ class RabotaBy extends Index\Source {
                     $experience_month = $match['month'];
                 }
 
+                $title_text = null;
+                $url        = null;
+
+                if ($title->count() > 0) {
+                    $title_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $title->text());
+                    $title_text = trim($title_text, "\t\n\r\0 .,-");
+
+                    $url = $title->attr('href');
+                    $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
+                    $url = preg_replace('~\?.*~ui', '', $url);
+                }
 
 
-                $url = $title->attr('href');
-                $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
-                $url = preg_replace('~\?.*~ui', '', $url);
+                $employer_title        = $last_employer->count() > 0   ? trim(preg_replace("~( |&nbsp;|\h)~ui", ' ', $last_employer->text())) : null;
+                $last_profession_title = $last_profession->count() > 0 ? trim(preg_replace("~( |&nbsp;|\h)~ui", ' ', $last_profession->text())) : null;
 
 
-                $employer_title        = preg_replace("~( |&nbsp;|\h)~ui", ' ', $last_employer->text());
-                $last_profession_title = preg_replace("~( |&nbsp;|\h)~ui", ' ', $last_profession->text());
 
                 return [
-                    'title'                   => trim($title->text(), "\t\n\r\0 .,-"),
-                    'url'                     => trim($url),
-                    'age'                     => ! empty($matches_age[1]) ? $matches_age[1] : null,
-                    'experience'              => trim($experience_text),
+                    'title'                   => $this->cleanText($title_text),
+                    'url'                     => $url,
+                    'age'                     => $age_text,
+                    'experience'              => $this->cleanText($experience_text),
                     'experience_year'         => $experience_year,
                     'experience_month'        => $experience_month,
                     'labels'                  => $labels_title,
                     'salary'                  => $salary,
                     'currency'                => $currency,
-                    'currency_origin'         => $currency_origin,
-                    'last_profession'         => trim($last_profession_title),
-                    'last_employer_title'     => trim($employer_title),
-                    'last_employer_period'    => trim($last_employer_period->text()),
-                    'date_last_update_origin' => trim($date_last_update_text),
+                    'currency_origin'         => $this->cleanText($currency_origin),
+                    'last_profession'         => $this->cleanText($last_profession_title),
+                    'last_employer_title'     => $this->cleanText($employer_title),
+                    'last_employer_period'    => $last_employer_period->count() > 0 ? $this->cleanText($last_employer_period->text()) : null,
+                    'date_last_update_origin' => $this->cleanText($date_last_update_text),
                     'date_last_update'        => $date_last_update,
                 ];
             });
@@ -441,17 +481,22 @@ class RabotaBy extends Index\Source {
             preg_match('~(\d*)\s+ваканси~ui', $stat->text(), $matches);
 
             if ( ! empty($matches[1])) {
-                $result['site_vacancies'] = $matches[1];
+                $result['total_vacancies'] = $matches[1];
+            }
+
+            preg_match('~(\d*)\s+резюме~ui', $stat->text(), $matches);
+            if ( ! empty($matches[1])) {
+                $result['total_resume'] = $matches[1];
             }
 
             preg_match('~(\d*)\s+компани~ui', $stat->text(), $matches);
             if ( ! empty($matches[1])) {
-                $result['site_employers'] = $matches[1];
+                $result['total_employers'] = $matches[1];
             }
 
             preg_match('~(\d*)\s+приглашени~ui', $stat->text(), $matches);
             if ( ! empty($matches[1])) {
-                $result['site_week_invites'] = $matches[1];
+                $result['total_week_invites'] = $matches[1];
             }
         }
 
@@ -692,16 +737,16 @@ class RabotaBy extends Index\Source {
         }
 
         // Вырезание лишнего текста
-//        foreach ($pages as $key => $page) {
-//            if ( ! empty($page['content'])) {
-//                $dom   = new Crawler($page['content']);
-//                $items = $this->filter($dom, '.HH-MainContent');
-//
-//                if ($items->count() > 0) {
-//                    $pages[$key]['content'] = $items->html();
-//                }
-//            }
-//        }
+        foreach ($pages as $key => $page) {
+            if ( ! empty($page['content'])) {
+                $dom   = new Crawler($page['content']);
+                $items = $this->filter($dom, '.HH-MainContent');
+
+                if ($items->count() > 0) {
+                    $pages[$key]['content'] = $items->html();
+                }
+            }
+        }
 
 
         return $pages;
@@ -795,5 +840,21 @@ class RabotaBy extends Index\Source {
 
         $parse_url = parse_url($url);
         return $parse_url['host'] ?? '';
+    }
+
+
+    /**
+     * @param string|null $string
+     * @return string
+     */
+    private function cleanText(string $string = null): string {
+
+        if (is_string($string)) {
+            $string = trim($string, "\t\n\r\0 .,-");
+            $string = iconv("UTF-8", "UTF-8//IGNORE", $string);
+            $string = preg_replace('~[\s]{2,}~', ' ', $string);
+        }
+
+        return $string ?: '';
     }
 }

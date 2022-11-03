@@ -57,17 +57,17 @@ class JobsEmployersVacancies extends \Zend_Db_Table_Abstract {
 
 
     /**
-     * @param int    $source_id
-     * @param string $url
-     * @param string $date
+     * @param int      $source_id
+     * @param string   $url
+     * @param DateTime $date
      * @return Zend_Db_Table_Row_Abstract|null
      */
-    public function getRowBySourceUrlDate(int $source_id, string $url, string $date): ?Zend_Db_Table_Row_Abstract {
+    public function getRowBySourceUrlDate(int $source_id, string $url, \DateTime $date): ?Zend_Db_Table_Row_Abstract {
 
         $select = $this->select()
             ->where("source_id = ?", $source_id)
             ->where("url = ?", $url)
-            ->where("IF (date_close IS NOT NULL, ? BETWEEN date_publish AND date_close, 0)", $date)
+            ->where("IF (date_close IS NOT NULL, ? BETWEEN date_publish AND date_close, 0)", $date->format('Y-m-d'))
             ->limit(1);
 
         return $this->fetchRow($select);

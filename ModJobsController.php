@@ -10,20 +10,20 @@ require_once 'classes/autoload.php';
 
 /**
  * @property JobsCategories                    $dataJobsCategories
+ * @property JobsCategoriesSummary             $dataJobsCategoriesSummary
  * @property JobsProfessions                   $dataJobsProfessions
+ * @property JobsProfessionsSummary            $dataJobsProfessionsSummary
  * @property JobsCurrency                      $dataJobsCurrency
  * @property JobsEmployers                     $dataJobsEmployers
  * @property JobsEmployersVacancies            $dataJobsEmployersVacancies
  * @property JobsEmployersVacanciesCategories  $dataJobsEmployersVacanciesCategories
  * @property JobsEmployersVacanciesProfessions $dataJobsEmployersVacanciesProfessions
- * @property JobsEmployersVacanciesSalary      $dataJobsEmployersVacanciesSalary
- * @property JobsEmployersVacanciesSummary     $dataJobsEmployersVacanciesSummary
+ * @property JobsEmployersVacanciesActivity    $dataJobsEmployersVacanciesActivity
  * @property JobsPages                         $dataJobsPages
  * @property JobsResume                        $dataJobsResume
  * @property JobsResumeCategories              $dataJobsResumeCategories
  * @property JobsResumeProfessions             $dataJobsResumeProfessions
  * @property JobsResumeActivity                $dataJobsResumeActivity
- * @property JobsResumeSummary                 $dataJobsResumeSummary
  * @property JobsSources                       $dataJobsSources
  * @property JobsSummary                       $dataJobsSummary
  */
@@ -185,7 +185,7 @@ class ModJobsController extends Common {
      */
     public function getConvertCurrency(float $price, string $currency_from, \Datetime $date = null): float {
 
-        if ($currency_from == 'byn') {
+        if ($currency_from == 'BYN') {
             return $price;
         }
 
@@ -201,14 +201,20 @@ class ModJobsController extends Common {
             }
 
             foreach ($nbrb_currencies as $currency_row) {
-                $currency = $this->dataJobsCurrency->createRow([
-                    'abbreviation' => $currency_row['abbreviation'],
-                    'rate'         => $currency_row['rate'],
-                    'scale'        => $currency_row['scale'],
-                    'date_rate'    => $date_rate->format("Y-m-d")
-                ]);
-                $currency->save();
+                $currency = $this->dataJobsCurrency->getRowByCurrencyDate($currency_from, $date_rate);
+
+                if (empty($currency)) {
+                    $currency = $this->dataJobsCurrency->createRow([
+                        'abbreviation' => $currency_row['abbreviation'],
+                        'rate'         => $currency_row['rate'],
+                        'scale'        => $currency_row['scale'],
+                        'date_rate'    => $date_rate->format("Y-m-d")
+                    ]);
+                    $currency->save();
+                }
             }
+
+            $currency = $this->dataJobsCurrency->getRowByCurrencyDate($currency_from, $date_rate);
         }
 
         return round(($price / $currency->scale) * $currency->rate, 2);

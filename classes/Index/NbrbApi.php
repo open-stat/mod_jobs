@@ -21,6 +21,7 @@ class NbrbApi extends \Common {
      */
     public function __construct() {
 
+        parent::__construct();
         $this->client = new Client();
     }
 
