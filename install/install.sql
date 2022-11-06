@@ -14,6 +14,17 @@ CREATE TABLE `mod_jobs_summary` (
     `total_vacancies` int unsigned DEFAULT NULL,
     `total_resume` int unsigned DEFAULT NULL,
     `total_week_invites` int unsigned DEFAULT NULL,
+    `total_employers` int unsigned DEFAULT NULL,
+    PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+CREATE TABLE `mod_jobs_regions` (
+    `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `country` varchar(255) NOT NULL,
+    `area` varchar(255) NOT NULL,
+    `city` varchar(255) DEFAULT NULL,
+    `lng` varchar(255) DEFAULT NULL,
+    `lat` varchar(255) DEFAULT NULL,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -104,6 +115,7 @@ CREATE TABLE `mod_jobs_employers_vacancies` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
     `employer_id` int unsigned NOT NULL,
     `source_id` int unsigned NOT NULL,
+    `region_id` int unsigned DEFAULT NULL,
     `status_load` enum('pending','process','complete') NOT NULL DEFAULT 'pending',
     `status_parse` enum('pending','process','complete') NOT NULL DEFAULT 'pending',
     `title` varchar(255) NOT NULL,
@@ -128,8 +140,10 @@ CREATE TABLE `mod_jobs_employers_vacancies` (
     KEY `employer_id` (`employer_id`),
     KEY `source_id` (`source_id`),
     KEY `url` (`url`),
+    KEY `region_id` (`region_id`),
     CONSTRAINT `fk1_mod_jobs_employers_vacancies` FOREIGN KEY (`employer_id`) REFERENCES `mod_jobs_employers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
-    CONSTRAINT `fk2_mod_jobs_employers_vacancies` FOREIGN KEY (`source_id`) REFERENCES `mod_jobs_sources` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT `fk2_mod_jobs_employers_vacancies` FOREIGN KEY (`source_id`) REFERENCES `mod_jobs_sources` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk3_mod_jobs_employers_vacancies` FOREIGN KEY (`region_id`) REFERENCES `mod_jobs_regions` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `mod_jobs_employers_vacancies_activity` (
