@@ -35,8 +35,6 @@ class View extends \Common {
             SELECT jr.id,
                    jr.title,
                    jr.salary_byn,
-                   jr.salary_max_byn,
-                   jr.salary_min,
                    jr.salary,
                    jr.currency,
                    jr.url,
@@ -44,6 +42,11 @@ class View extends \Common {
                    jr.region,
                    jr.lat,
                    jr.lng,
+                   jr.age,
+                   IF (jr.experience_year > 0 || jr.experience_month, 
+                        CONCAT_WS('', jr.experience_year, 'г. ', jr.experience_month, 'мес.'),
+                       ''
+                   ) AS experience,
                    jr.date_publish
             FROM mod_jobs_resume AS jr
             WHERE jr.date_close IS NULL
@@ -52,23 +55,22 @@ class View extends \Common {
 
         $table->addFilter("CONCAT_WS('|', jr.title, jr.tags)", $table::FILTER_TEXT, $this->_("Название вакансии, теги"));
 
-        $table->addSearch($this->_("Регион"),     "jr.region",          $table::SEARCH_TEXT);
-        $table->addSearch($this->_("Зп от BYN"),  "jr.salary_min_byn",  $table::SEARCH_NUMBER);
-        $table->addSearch($this->_("Зп до BYN"),  "jr.salary_max_byn",  $table::SEARCH_NUMBER);
+        $table->addSearch($this->_("Регион"), "jr.region",     $table::SEARCH_TEXT);
+        $table->addSearch($this->_("Зп BYN"), "jr.salary_byn", $table::SEARCH_NUMBER);
 
 
-        $table->addColumn($this->_("Название резюме"),  'title',            $table::COLUMN_TEXT);
-        $table->addColumn($this->_('Ссылка на резюме'), 'url',              $table::COLUMN_HTML, 150);
-        $table->addColumn($this->_("Теги"),             'tags',             $table::COLUMN_TEXT);
-        $table->addColumn($this->_("Регион"),           'region',           $table::COLUMN_TEXT);
-        $table->addColumn($this->_("Зп от BYN"),        'salary_min_byn',   $table::COLUMN_HTML, 100);
-        $table->addColumn($this->_("Зп до BYN"),        'salary_max_byn',   $table::COLUMN_HTML, 100);
-        $table->addColumn($this->_("Зп от"),            'salary_min',       $table::COLUMN_HTML, 100)->hide();
-        $table->addColumn($this->_("Зп до"),            'salary_max',       $table::COLUMN_HTML, 100)->hide();
-        $table->addColumn($this->_("Валюта"),           'currency',         $table::COLUMN_TEXT, 120)->hide();
-        $table->addColumn($this->_("Координаты"),       'coordinates',      $table::COLUMN_TEXT, 120)->hide();
-        $table->addColumn($this->_("Краткое описание"), 'description',      $table::COLUMN_TEXT, 120)->hide();
-        $table->addColumn($this->_("Дата публикации"),  'date_publish',     $table::COLUMN_DATE, 120);
+        $table->addColumn($this->_("Название резюме"),   'title',            $table::COLUMN_TEXT);
+        $table->addColumn($this->_('Ссылка на резюме'),  'url',              $table::COLUMN_HTML, 150);
+        $table->addColumn($this->_("Возраст"),           'age',              $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Общий опыт работы"), 'experience',       $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Теги"),              'tags',             $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Регион"),            'region',           $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Зп BYN"),            'salary_byn',       $table::COLUMN_HTML, 100);
+        $table->addColumn($this->_("Зп"),                'salary',           $table::COLUMN_HTML, 100)->hide();
+        $table->addColumn($this->_("Валюта"),            'currency',         $table::COLUMN_TEXT, 120)->hide();
+        $table->addColumn($this->_("Координаты"),        'coordinates',      $table::COLUMN_TEXT, 120)->hide();
+        $table->addColumn($this->_("Краткое описание"),  'description',      $table::COLUMN_TEXT, 120)->hide();
+        $table->addColumn($this->_("Дата публикации"),   'date_publish',     $table::COLUMN_DATE, 130);
 
 
 
@@ -78,21 +80,18 @@ class View extends \Common {
             $url      = $row->url->getValue();
             $row->url = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
-            $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
-            $row->salary_min_byn->setAttr('class', 'text-right');
+            if ($row->salary_byn->getValue()) {
+                $row->salary_byn = \Tool::commafy($row->salary_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_byn->setAttr('class', 'text-right');
+            }
 
-            $row->salary_max_byn = \Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
-            $row->salary_max_byn->setAttr('class', 'text-right');
-
-            $row->salary_min = \Tool::commafy($row->salary_min->getValue());
-            $row->salary_min->setAttr('class', 'text-right');
-
-            $row->salary_max = \Tool::commafy($row->salary_max->getValue());
-            $row->salary_max->setAttr('class', 'text-right');
+            $row->salary = \Tool::commafy($row->salary->getValue());
+            $row->salary->setAttr('class', 'text-right');
         }
 
         return $table;
     }
+
 
     /**
      * @param string $base_url
@@ -114,8 +113,6 @@ class View extends \Common {
             SELECT jr.id,
                    jr.title,
                    jr.salary_byn,
-                   jr.salary_max_byn,
-                   jr.salary_min,
                    jr.salary,
                    jr.currency,
                    jr.url,
@@ -123,6 +120,11 @@ class View extends \Common {
                    jr.region,
                    jr.lat,
                    jr.lng,
+                   jr.age,
+                   IF (jr.experience_year > 0 || jr.experience_month, 
+                        CONCAT_WS('', jr.experience_year, 'г. ', jr.experience_month, 'мес.'),
+                       ''
+                   ) AS experience,
                    jr.date_publish,
                    jr.date_close
             FROM mod_jobs_resume AS jr
@@ -132,24 +134,22 @@ class View extends \Common {
 
         $table->addFilter("CONCAT_WS('|', jr.title, jr.tags)", $table::FILTER_TEXT, $this->_("Название вакансии, теги"));
 
-        $table->addSearch($this->_("Регион"),     "jr.region",          $table::SEARCH_TEXT);
-        $table->addSearch($this->_("Зп от BYN"),  "jr.salary_min_byn",  $table::SEARCH_NUMBER);
-        $table->addSearch($this->_("Зп до BYN"),  "jr.salary_max_byn",  $table::SEARCH_NUMBER);
+        $table->addSearch($this->_("Регион"), "jr.region",     $table::SEARCH_TEXT);
+        $table->addSearch($this->_("Зп BYN"), "jr.salary_byn", $table::SEARCH_NUMBER);
 
 
-        $table->addColumn($this->_("Название резюме"),  'title',            $table::COLUMN_TEXT);
-        $table->addColumn($this->_('Ссылка на резюме'), 'url',              $table::COLUMN_HTML, 150);
-        $table->addColumn($this->_("Теги"),             'tags',             $table::COLUMN_TEXT);
-        $table->addColumn($this->_("Регион"),           'region',           $table::COLUMN_TEXT);
-        $table->addColumn($this->_("Зп от BYN"),        'salary_min_byn',   $table::COLUMN_HTML, 100);
-        $table->addColumn($this->_("Зп до BYN"),        'salary_max_byn',   $table::COLUMN_HTML, 100);
-        $table->addColumn($this->_("Зп от"),            'salary_min',       $table::COLUMN_HTML, 100)->hide();
-        $table->addColumn($this->_("Зп до"),            'salary_max',       $table::COLUMN_HTML, 100)->hide();
-        $table->addColumn($this->_("Валюта"),           'currency',         $table::COLUMN_TEXT, 120)->hide();
-        $table->addColumn($this->_("Координаты"),       'coordinates',      $table::COLUMN_TEXT, 120)->hide();
-        $table->addColumn($this->_("Краткое описание"), 'description',      $table::COLUMN_TEXT, 120)->hide();
-        $table->addColumn($this->_("Дата публикации"),  'date_publish',     $table::COLUMN_DATE, 120);
-        $table->addColumn($this->_("Дата закрытия"),    'date_publish',     $table::COLUMN_DATE, 120);
+        $table->addColumn($this->_("Название резюме"),   'title',            $table::COLUMN_TEXT);
+        $table->addColumn($this->_('Ссылка на резюме'),  'url',              $table::COLUMN_HTML, 150);
+        $table->addColumn($this->_("Возраст"),           'age',              $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Общий опыт работы"), 'experience',       $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Теги"),              'tags',             $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Регион"),            'region',           $table::COLUMN_TEXT);
+        $table->addColumn($this->_("Зп BYN"),            'salary_byn',       $table::COLUMN_HTML, 100);
+        $table->addColumn($this->_("Зп"),                'salary',           $table::COLUMN_HTML, 100)->hide();
+        $table->addColumn($this->_("Валюта"),            'currency',         $table::COLUMN_TEXT, 120)->hide();
+        $table->addColumn($this->_("Координаты"),        'coordinates',      $table::COLUMN_TEXT, 120)->hide();
+        $table->addColumn($this->_("Краткое описание"),  'description',      $table::COLUMN_TEXT, 120)->hide();
+        $table->addColumn($this->_("Дата публикации"),   'date_publish',     $table::COLUMN_DATE, 120);
 
 
 
@@ -159,17 +159,13 @@ class View extends \Common {
             $url      = $row->url->getValue();
             $row->url = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
-            $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
-            $row->salary_min_byn->setAttr('class', 'text-right');
+            if ($row->salary_byn->getValue()) {
+                $row->salary_byn = \Tool::commafy($row->salary_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_byn->setAttr('class', 'text-right');
+            }
 
-            $row->salary_max_byn = \Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
-            $row->salary_max_byn->setAttr('class', 'text-right');
-
-            $row->salary_min = \Tool::commafy($row->salary_min->getValue());
-            $row->salary_min->setAttr('class', 'text-right');
-
-            $row->salary_max = \Tool::commafy($row->salary_max->getValue());
-            $row->salary_max->setAttr('class', 'text-right');
+            $row->salary = \Tool::commafy($row->salary->getValue());
+            $row->salary->setAttr('class', 'text-right');
         }
 
         return $table;
@@ -186,39 +182,51 @@ class View extends \Common {
         $edit->table = 'mod_jobs_resume';
         $edit->readOnly = true;
 
+        $last_employer = $resume->last_employer_id ? $this->modJobs->dataJobsEmployers->find($resume->last_employer_id)->current() : null;
+
         $edit->SQL = [
             [
-                'id'               => $resume->id,
-                'title'            => $resume->title,
-                'region'           => $resume->region,
-                'url'              => $resume->url,
-                'tags'             => $resume->tags,
-                'salary_min_byn'   => $resume->salary_min_byn,
-                'salary_max_byn'   => $resume->salary_max_byn,
-                'salary_min'       => $resume->salary_min,
-                'salary_max'       => $resume->salary_max,
-                'currency'         => $resume->currency,
-                'lat'              => $resume->lat,
-                'lng'              => $resume->lng,
-                'date_publish'     => $resume->date_publish,
-                'date_close'       => $resume->date_close,
+                'id'                  => $resume->id,
+                'title'               => $resume->title,
+                'age'                 => $resume->age,
+                'region'              => $resume->region,
+                'url'                 => $resume->url,
+                'tags'                => $resume->tags,
+                'salary_byn'          => $resume->salary_byn,
+                'salary'              => $resume->salary,
+                'currency'            => $resume->currency,
+                'last_employer_title' => $last_employer?->title,
+                'last_profession'     => $resume->last_profession,
+                'search_status'       => $resume->search_status,
+                'date_last_up'        => $resume->date_last_up,
+                'lat'                 => $resume->lat,
+                'lng'                 => $resume->lng,
+                'date_publish'        => $resume->date_publish,
+                'date_close'          => $resume->date_close,
             ],
         ];
 
+        $search_status = [
+            'active'  => 'В активном поиске',
+            'passive' => 'Рассматривает предложения',
+        ];
 
-        $edit->addControl($this->_("Название резюме"),  "TEXT");
-        $edit->addControl($this->_("Регион"),           "TEXT");
-        $edit->addControl($this->_('Ссылка на резюме'), "LINK");
-        $edit->addControl($this->_("Теги"),             "TEXT");
-        $edit->addControl($this->_("Зп от BYN"),        "MONEY");
-        $edit->addControl($this->_("Зп до BYN"),        "MONEY");
-        $edit->addControl($this->_("Зп от"),            "MONEY");
-        $edit->addControl($this->_("Зп до"),            "MONEY");
-        $edit->addControl($this->_("Валюта"),           "TEXT");
-        $edit->addControl($this->_("Широта"),           "TEXT");
-        $edit->addControl($this->_("Долгота"),          "TEXT");
-        $edit->addControl($this->_("Дата публикации"),  "DATE2");
-        $edit->addControl($this->_("Дата завершения"),  "DATE2");
+        $edit->addControl($this->_("Название резюме"),                 "TEXT");
+        $edit->addControl($this->_("Возраст"),                         "TEXT");
+        $edit->addControl($this->_("Регион"),                          "TEXT");
+        $edit->addControl($this->_('Ссылка на резюме'),                "LINK");
+        $edit->addControl($this->_("Теги"),                            "TEXT");
+        $edit->addControl($this->_("Зп BYN"),                          "MONEY");
+        $edit->addControl($this->_("Зп"),                              "MONEY");
+        $edit->addControl($this->_("Валюта"),                          "TEXT");
+        $edit->addControl($this->_("Последнее место работы"),          "TEXT");
+        $edit->addControl($this->_("Прошлая специальность"),           "TEXT");
+        $edit->addControl($this->_("Статус активности"),               "SELECT"); $edit->selectSQL[] = $search_status;
+        $edit->addControl($this->_("Дата последнего поднятия резюме"), "DATE2");
+        $edit->addControl($this->_("Широта"),                          "TEXT");
+        $edit->addControl($this->_("Долгота"),                         "TEXT");
+        $edit->addControl($this->_("Дата публикации"),                 "DATE2");
+        $edit->addControl($this->_("Дата завершения"),                 "DATE2");
 
 
         $edit->firstColWidth = "200px";

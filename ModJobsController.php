@@ -114,10 +114,12 @@ class ModJobsController extends Common {
 
                 $panel->addTab('Работодатель', 'vacancy',            $base_url);
                 $panel->addTab('Вакансии',     'employer_vacancies', $base_url);
+                $panel->addTab('Резюме',       'employer_resume',    $base_url);
 
                 switch ($panel->getActiveTab()) {
                     case 'vacancy':            $content[] = $view->getEdit($employer)->render(); break;
                     case 'employer_vacancies': $content[] = $view->getTableVacancy($employer)->render();break;
+                    case 'employer_resume':    $content[] = $view->getTableResume($employer)->render();break;
                 }
 
             } else {
@@ -153,7 +155,7 @@ class ModJobsController extends Common {
                     throw new Exception('Указанное резюме не найдено');
                 }
 
-                $panel->setTitle($resume->title, $base_url);
+                $panel->setTitle($resume->title, '', $base_url);
                 $content[] = $view->getEdit($resume)->render();
 
             } else {

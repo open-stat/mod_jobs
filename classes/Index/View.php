@@ -10,7 +10,7 @@ require_once DOC_ROOT . "core2/inc/classes/Table/Db.php";
 
 
 /**
- * @property \ModProductsController $modProducts
+ * @property \ModJobsController $modJobs
  */
 class View extends \Common {
 
@@ -200,11 +200,15 @@ class View extends \Common {
             $row->url           = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
             $row->employers_url = "<a href=\"{$employers_url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
-            $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
-            $row->salary_min_byn->setAttr('class', 'text-right');
+            if ($row->salary_min_byn->getValue()) {
+                $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_min_byn->setAttr('class', 'text-right');
+            }
 
-            $row->salary_max_byn = \Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
-            $row->salary_max_byn->setAttr('class', 'text-right');
+            if ($row->salary_max_byn->getValue()) {
+                $row->salary_max_byn = \Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_max_byn->setAttr('class', 'text-right');
+            }
 
             $row->salary_min = \Tool::commafy($row->salary_min->getValue());
             $row->salary_min->setAttr('class', 'text-right');
@@ -324,6 +328,7 @@ class View extends \Common {
     /**
      * @param \Zend_Db_Table_Row_Abstract $vacancy
      * @return \editTable
+     * @throws \Zend_Db_Table_Exception
      */
     public function getEdit(\Zend_Db_Table_Row_Abstract $vacancy): \editTable {
 
@@ -331,12 +336,18 @@ class View extends \Common {
         $edit->table = 'mod_jobs_employers_vacancies';
         $edit->readOnly = true;
 
+
+        $employer = $this->modJobs->dataJobsEmployers->find($vacancy->employer_id)->current();
+
         $edit->SQL = [
             [
                 'id'               => $vacancy->id,
                 'title'            => $vacancy->title,
+                'employer_title'   => $employer->title,
+                'employer_unp'     => $employer->unp,
                 'region'           => $vacancy->region,
                 'url'              => $vacancy->url,
+                'employer_url'     => $employer->url,
                 'tags'             => $vacancy->tags,
                 'salary_min_byn'   => $vacancy->salary_min_byn,
                 'salary_max_byn'   => $vacancy->salary_max_byn,
@@ -346,10 +357,10 @@ class View extends \Common {
                 'address'          => $vacancy->address,
                 'lat'              => $vacancy->lat,
                 'lng'              => $vacancy->lng,
-                'date_publish'     => $vacancy->date_publish,
-                'date_close'       => $vacancy->date_close,
                 'description'      => $vacancy->description,
                 'description_full' => $vacancy->description_full,
+                'date_publish'     => $vacancy->date_publish,
+                'date_close'       => $vacancy->date_close,
             ],
         ];
 
@@ -370,7 +381,9 @@ class View extends \Common {
         $edit->addControl($this->_("Широта"),                 "TEXT");
         $edit->addControl($this->_("Долгота"),                "TEXT");
         $edit->addControl($this->_("Краткое описание"),       "TEXT");
-        $edit->addControl($this->_("Дата публикации"),        "TEXT");
+        $edit->addControl($this->_("Полное описание"),        "TEXT");
+        $edit->addControl($this->_("Дата публикации"),        "DATE2");
+        $edit->addControl($this->_("Дата закрытия"),          "DATE2");
 
 
         $edit->firstColWidth = "200px";
