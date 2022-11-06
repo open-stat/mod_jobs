@@ -201,6 +201,8 @@ CREATE TABLE `mod_jobs_resume` (
     `search_status` enum('passive','active') DEFAULT NULL,
     `tags` varchar(500) DEFAULT NULL,
     `region` varchar(255) DEFAULT NULL,
+    `experience_year` int unsigned DEFAULT NULL,
+    `experience_month` int unsigned DEFAULT NULL,
     `lat` varchar(100) DEFAULT NULL,
     `lng` varchar(100) DEFAULT NULL,
     `date_last_up` datetime DEFAULT NULL,

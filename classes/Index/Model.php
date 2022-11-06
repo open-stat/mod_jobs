@@ -304,6 +304,8 @@ class Model extends \Common {
                 'title'            => $resume['title'],
                 'url'              => $resume['url'],
                 'age'              => $resume['age'] ?? null,
+                'experience_year'  => $resume['experience_year'] ?? null,
+                'experience_month' => $resume['experience_month'] ?? null,
                 'salary_byn'       => $salary_byn,
                 'salary'           => $resume['salary'] ?? null,
                 'currency'         => $currency,
@@ -340,7 +342,9 @@ class Model extends \Common {
                     'title'            => $resume['title'],
                     'url'              => $resume['url'],
                     'age'              => $resume['age'] ?? null,
-                    'tags'             => $resume['labels'] ?? null,
+                    'experience_year'  => $resume['experience_year'] ?? null,
+                    'experience_month' => $resume['experience_month'] ?? null,
+                    'tags'             => ! empty($resume['labels']) ? json_encode($resume['labels']) : null,
                     'salary_byn'       => $salary_byn,
                     'salary'           => $resume['salary'] ?? null,
                     'currency'         => $currency,
@@ -351,8 +355,10 @@ class Model extends \Common {
                 ]);
 
             } else {
-                $resume_row->salary_byn   = $salary_byn;
-                $resume_row->date_last_up = $resume['date_last_update'] ?? null;
+                $resume_row->experience_year  = $resume['experience_year'] ?? null;
+                $resume_row->experience_month = $resume['experience_month'] ?? null;
+                $resume_row->salary_byn       = $salary_byn;
+                $resume_row->date_last_up     = $resume['date_last_update'] ?? null;
             }
 
             $resume_row->save();
