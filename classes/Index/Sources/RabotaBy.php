@@ -329,6 +329,15 @@ class RabotaBy extends Index\Source {
             }
         }
 
+        $subtitle = $this->filter($dom, '.registration-in-serp-messages [data-qa="resumes-total-found"]:eq(1)');
+
+        if ($subtitle->count() > 0) {
+            $subtitle_text = preg_replace("~( |&nbsp;)~ui", '', $subtitle->text());
+            preg_match('~покажем\s*ещё\s*(\d+)~ui', $subtitle_text, $matches);
+            if ( ! empty($matches[1])) {
+                $result['resume_found'] = empty($result['resume_found']) ? $matches[1] : $result['resume_found'] + $matches[1];
+            }
+        }
 
         $vacancies = $this->filter($dom, '[data-qa=resume-serp__results-search] .serp-item');
 
@@ -654,7 +663,7 @@ class RabotaBy extends Index\Source {
     private function getProfessionsVacancies(): array {
 
         $professions = $this->getProfessions();
-        $base_url    = $this->base_url . '/search/vacancy?text=[TITLE]&from=suggest_post&salary=&clusters=true&area=16&no_magic=true&ored_clusters=true&items_on_page=100&enable_snippets=true&page=[PAGE]&hhtmFrom=vacancy_search_list';
+        $base_url    = $this->base_url . '/search/vacancy?text=[TITLE]&from=suggest_post&salary=&clusters=true&area=16&no_magic=true&ored_clusters=true&items_on_page=100&enable_snippets=true&page=[PAGE]&hhtmFrom=vacancy_search_list&search_field=name';
 
         foreach ($professions as $key => $profession) {
             if (empty($profession['title'])) {
