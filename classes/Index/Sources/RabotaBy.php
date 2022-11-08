@@ -543,7 +543,7 @@ class RabotaBy extends Index\Source {
 
         $categories = parent::getCategories();
 
-        $url = $this->base_url . '/search/vacancy?area=16&search_field=name&search_field=company_name&search_field=description&specialization=[SPEC]&text=&page=[PAGE]&hhtmFrom=vacancy_search_list&items_on_page=100';
+        $url = $this->base_url . '/search/vacancy?area=16&search_field=name&specialization=[SPEC]&text=&page=[PAGE]&hhtmFrom=vacancy_search_list&items_on_page=100';
 
         if ( ! empty($categories['auto']))          $categories['auto']['url'][0]          = str_replace('[SPEC]', 7, $url);
         if ( ! empty($categories['admin']))         $categories['admin']['url'][0]         = str_replace('[SPEC]', 4, $url);
