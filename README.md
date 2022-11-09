@@ -1,13 +1,26 @@
-# Работы
+# Работа
 
 Получение и анализ информации о вакансиях и резюме
 
 ## Функции
 
-- Получение данных о вакансиях с rabota.by
-- Получение данных о резюме с rabota.by
-- Получение данных о работодателях с rabota.by
-- Вывод данных в виде множества наглядных графиков в системе Grafana
+1. Сбор данных о вакансиях, резюме и работадателях с сайтов:
+- armenia.hh.ru
+- germany.hh.ru
+- headhunter.ge
+- headhunter.kg
+- hh1.az
+- hh.kz
+- hh.ru
+- hh.uz
+- lithuania.hh.ru
+- oae.hh.ru
+- poland.hh.ru
+- rabota.by
+- turkestan.hh.kz
+- turkey.hh.ru
+- usa.hh.ru
+2. Вывод данных в виде множества наглядных графиков в системе Grafana
 
 [Конфигурация для создания дешборда в Grafana](docs/img/grafana-dashboard.png)
 

@@ -10,8 +10,8 @@ require_once __DIR__ . '/../Hh.php';
 /**
  *
  */
-class RabotaBy extends Index\Hh {
+class Hh1Az extends Index\Hh {
 
-    protected string $base_url  = 'https://rabota.by';
-    protected string $region_id = '16';
+    protected string $base_url  = 'https://hh1.az';
+    protected string $region_id = '9';
 }
