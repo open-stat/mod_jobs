@@ -10,12 +10,15 @@ CREATE TABLE `mod_jobs_sources` (
 
 CREATE TABLE `mod_jobs_summary` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `source_id` int(11) unsigned not null,
     `date_summary` datetime NOT NULL,
     `total_vacancies` int unsigned DEFAULT NULL,
     `total_resume` int unsigned DEFAULT NULL,
     `total_week_invites` int unsigned DEFAULT NULL,
     `total_employers` int unsigned DEFAULT NULL,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    KEY `source_id` (`source_id`),
+    CONSTRAINT `fk1_mod_jobs_summary` FOREIGN KEY (`source_id`) REFERENCES `mod_jobs_sources` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `mod_jobs_regions` (
@@ -39,6 +42,7 @@ CREATE TABLE `mod_jobs_categories` (
 
 CREATE TABLE `mod_jobs_categories_summary` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `source_id` int(11) unsigned not null,
     `category_id` int unsigned NOT NULL,
     `date_summary` date NOT NULL,
     `total_vacancies` int unsigned DEFAULT NULL,
@@ -46,8 +50,10 @@ CREATE TABLE `mod_jobs_categories_summary` (
     `total_people` int unsigned DEFAULT NULL,
     `date_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    KEY `source_id` (`source_id`),
     KEY `category_id` (`category_id`),
-    CONSTRAINT `fk1_mod_jobs_categories_summary` FOREIGN KEY (`category_id`) REFERENCES `mod_jobs_categories` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+    CONSTRAINT `fk1_mod_jobs_categories_summary` FOREIGN KEY (`source_id`) REFERENCES `mod_jobs_sources` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk2_mod_jobs_categories_summary` FOREIGN KEY (`category_id`) REFERENCES `mod_jobs_categories` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `mod_jobs_professions` (
@@ -61,6 +67,7 @@ CREATE TABLE `mod_jobs_professions` (
 
 CREATE TABLE `mod_jobs_professions_summary` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `source_id` int(11) unsigned not null,
     `profession_id` int unsigned NOT NULL,
     `date_summary` date NOT NULL,
     `total_vacancies` int unsigned DEFAULT NULL,
@@ -68,8 +75,10 @@ CREATE TABLE `mod_jobs_professions_summary` (
     `total_people` int unsigned DEFAULT NULL,
     `date_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
+    KEY `source_id` (`source_id`),
     KEY `profession_id` (`profession_id`),
-    CONSTRAINT `fk1_mod_jobs_professions_summary` FOREIGN KEY (`profession_id`) REFERENCES `mod_jobs_professions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT `fk1_mod_jobs_professions_summary` FOREIGN KEY (`source_id`) REFERENCES `mod_jobs_sources` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk2_mod_jobs_professions_summary` FOREIGN KEY (`profession_id`) REFERENCES `mod_jobs_professions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `mod_jobs_currency` (
@@ -79,25 +88,7 @@ CREATE TABLE `mod_jobs_currency` (
     `scale` decimal(8,2) DEFAULT NULL,
     `date_rate` date NOT NULL,
     PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4_general_ci;
-
-CREATE TABLE `mod_jobs_pages` (
-    `id` int unsigned NOT NULL AUTO_INCREMENT,
-    `source_name` varchar(100) NOT NULL,
-    `type` varchar(100) NOT NULL,
-    `url` varchar(500) CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL,
-    `status` enum('pending','process','complete','error') CHARACTER SET utf8 COLLATE utf8_general_ci NOT NULL DEFAULT 'pending',
-    `content` longblob NOT NULL,
-    `options` json DEFAULT NULL,
-    `note` text,
-    `date_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
-    `date_last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    `is_zip_sw` int DEFAULT NULL,
-    PRIMARY KEY (`id`),
-    KEY `status` (`status`),
-    KEY `type` (`type`),
-    KEY `source_name` (`source_name`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `mod_jobs_employers` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
@@ -108,7 +99,9 @@ CREATE TABLE `mod_jobs_employers` (
     `description` text,
     `date_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
     `date_last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (`id`)
+    PRIMARY KEY (`id`),
+    KEY `title` (`title`),
+    KEY `url` (`url`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
 CREATE TABLE `mod_jobs_employers_vacancies` (
@@ -141,6 +134,7 @@ CREATE TABLE `mod_jobs_employers_vacancies` (
     KEY `source_id` (`source_id`),
     KEY `url` (`url`),
     KEY `region_id` (`region_id`),
+    KEY `title` (`title`),
     CONSTRAINT `fk1_mod_jobs_employers_vacancies` FOREIGN KEY (`employer_id`) REFERENCES `mod_jobs_employers` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT `fk2_mod_jobs_employers_vacancies` FOREIGN KEY (`source_id`) REFERENCES `mod_jobs_sources` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT `fk3_mod_jobs_employers_vacancies` FOREIGN KEY (`region_id`) REFERENCES `mod_jobs_regions` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
@@ -155,6 +149,7 @@ CREATE TABLE `mod_jobs_employers_vacancies_activity` (
     `date_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `vacancy_id` (`vacancy_id`),
+    KEY `date_activity` (`date_activity`),
     CONSTRAINT `fk1_mod_jobs_employers_vacancies_activity` FOREIGN KEY (`vacancy_id`) REFERENCES `mod_jobs_employers_vacancies` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -184,7 +179,6 @@ CREATE TABLE `mod_jobs_employers_vacancies_professions` (
     CONSTRAINT `fk2_mod_jobs_employers_vacancies_professions` FOREIGN KEY (`profession_id`) REFERENCES `mod_jobs_professions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
-
 CREATE TABLE `mod_jobs_resume` (
     `id` int unsigned NOT NULL AUTO_INCREMENT,
     `source_id` int unsigned NOT NULL,
@@ -201,8 +195,8 @@ CREATE TABLE `mod_jobs_resume` (
     `search_status` enum('passive','active') DEFAULT NULL,
     `tags` varchar(500) DEFAULT NULL,
     `region` varchar(255) DEFAULT NULL,
-    `experience_year` int unsigned DEFAULT NULL,
-    `experience_month` int unsigned DEFAULT NULL,
+    `experience_year` int unsigned DEFAULT '0',
+    `experience_month` int unsigned DEFAULT '0',
     `lat` varchar(100) DEFAULT NULL,
     `lng` varchar(100) DEFAULT NULL,
     `date_last_up` datetime DEFAULT NULL,
@@ -213,6 +207,8 @@ CREATE TABLE `mod_jobs_resume` (
     PRIMARY KEY (`id`),
     KEY `source_id` (`source_id`),
     KEY `last_employer_id` (`last_employer_id`),
+    KEY `title` (`title`),
+    KEY `url` (`url`),
     CONSTRAINT `fk1_mod_jobs_resume` FOREIGN KEY (`source_id`) REFERENCES `mod_jobs_sources` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT `fk3_mod_jobs_resume` FOREIGN KEY (`last_employer_id`) REFERENCES `mod_jobs_employers` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
@@ -225,6 +221,7 @@ CREATE TABLE `mod_jobs_resume_activity` (
     `date_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `resume_id` (`resume_id`),
+    KEY `date_activity` (`date_activity`),
     CONSTRAINT `fk1_mod_jobs_resume_activity` FOREIGN KEY (`resume_id`) REFERENCES `mod_jobs_resume` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
 
@@ -253,3 +250,22 @@ CREATE TABLE `mod_jobs_resume_professions` (
     CONSTRAINT `fk1_mod_jobs_resume_professions` FOREIGN KEY (`resume_id`) REFERENCES `mod_jobs_resume` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT `fk2_mod_jobs_resume_professions` FOREIGN KEY (`profession_id`) REFERENCES `mod_jobs_professions` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;
+
+
+CREATE TABLE `mod_jobs_pages` (
+    `id` int unsigned NOT NULL AUTO_INCREMENT,
+    `source_name` varchar(100) NOT NULL,
+    `type` varchar(100) NOT NULL,
+    `url` varchar(700) NOT NULL,
+    `status` enum('pending','process','complete','error') NOT NULL DEFAULT 'pending',
+    `content` longblob NOT NULL,
+    `options` json DEFAULT NULL,
+    `note` blob,
+    `date_created` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
+    `date_last_update` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    `is_zip_sw` int DEFAULT NULL,
+    PRIMARY KEY (`id`),
+    KEY `status` (`status`),
+    KEY `type` (`type`),
+    KEY `source_name` (`source_name`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci;

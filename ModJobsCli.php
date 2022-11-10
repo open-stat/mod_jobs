@@ -395,7 +395,7 @@ class ModJobsCli extends Common {
                                 }
                             }
 
-                            $model->saveSummary($parse_page, $page_options);
+                            $model->saveSummary((int)$source->id, $parse_page, $page_options);
 
                             $page->status = 'complete';
                             $page->note   = implode(PHP_EOL.PHP_EOL, $error_messages);
@@ -439,7 +439,7 @@ class ModJobsCli extends Common {
                             }
 
 
-                            $model->saveSummary($parse_page, $page_options);
+                            $model->saveSummary((int)$source->id, $parse_page, $page_options);
 
                             $page->status = 'complete';
                             $page->note   = implode(PHP_EOL.PHP_EOL, $error_messages);

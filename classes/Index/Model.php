@@ -417,12 +417,13 @@ class Model extends \Common {
 
 
     /**
+     * @param int   $source_id
      * @param array $parse_page
      * @param array $page_options
      * @return void
      * @throws \Exception
      */
-    public function saveSummary(array $parse_page, array $page_options): void {
+    public function saveSummary(int $source_id, array $parse_page, array $page_options): void {
 
         if (empty($page_options['date_created'])) {
             return;
@@ -439,10 +440,11 @@ class Model extends \Common {
               ! empty($parse_page['people_found']))
         ) {
             $profession         = $this->modJobs->dataJobsProfessions->getRowByProfessionName($page_options['profession_name'], $page_options['profession_title']);
-            $profession_summary = $this->modJobs->dataJobsProfessionsSummary->getRowByProfessionIdDate($profession->id, $date_created);
+            $profession_summary = $this->modJobs->dataJobsProfessionsSummary->getRowByProfessionIdDate($source_id, $profession->id, $date_created);
 
             if (empty($profession_summary)) {
                 $profession_summary = $this->modJobs->dataJobsProfessionsSummary->createRow([
+                    'source_id'       => $source_id,
                     'profession_id'   => $profession->id,
                     'date_summary'    => $date_created->format('Y-m-d'),
                     'total_vacancies' => $parse_page['vacancies_found'] ?? null,
@@ -476,10 +478,11 @@ class Model extends \Common {
               ! empty($parse_page['people_found']))
         ) {
             $category         = $this->modJobs->dataJobsCategories->getRowByCategoryName($page_options['category_name'], $page_options['category_title']);
-            $category_summary = $this->modJobs->dataJobsCategoriesSummary->getRowByCategoryIdDate($category->id, $date_created);
+            $category_summary = $this->modJobs->dataJobsCategoriesSummary->getRowByCategoryIdDate($source_id, $category->id, $date_created);
 
             if (empty($category_summary)) {
                 $category_summary = $this->modJobs->dataJobsCategoriesSummary->createRow([
+                    'source_id'       => $source_id,
                     'category_id'     => $category->id,
                     'date_summary'    => $date_created->format('Y-m-d'),
                     'total_vacancies' => $parse_page['vacancies_found'] ?? null,
@@ -510,10 +513,11 @@ class Model extends \Common {
              ! empty($parse_page['total_employers']) ||
              ! empty($parse_page['total_week_invites'])
         ) {
-            $summary = $this->modJobs->dataJobsSummary->getRowByDate($date_created);
+            $summary = $this->modJobs->dataJobsSummary->getRowByDate($source_id, $date_created);
 
             if (empty($summary)) {
                 $summary = $this->modJobs->dataJobsSummary->createRow([
+                    'source_id'          => $source_id,
                     'date_summary'       => $date_created->format('Y-m-d H:i:s'),
                     'total_vacancies'    => $parse_page['total_vacancies'] ?? null,
                     'total_resume'       => $parse_page['total_resume'] ?? null,

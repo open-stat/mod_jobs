@@ -185,7 +185,7 @@ class ModJobsController extends Common {
      * @throws \GuzzleHttp\Exception\GuzzleException
      * @throws Exception
      */
-    public function getConvertCurrency(float $price, string $currency_from, \Datetime $date = null): float {
+    public function getConvertCurrency(float $price, string $currency_from, \Datetime $date = null):? float {
 
         if ($currency_from == 'BYN') {
             return $price;
@@ -196,29 +196,51 @@ class ModJobsController extends Common {
         $currency  = $this->dataJobsCurrency->getRowByCurrencyDate($currency_from, $date_rate);
 
         if (empty($currency)) {
-            $nbrb_currencies = (new Jobs\Index\NbrbApi())->getCurrency();
+            $nbrb_currencies = (new Jobs\Index\NbrbApi())->getCurrency($date_rate);
 
             if (empty($nbrb_currencies)) {
                 throw new \Exception('Не удалось получить курсы валют');
             }
 
-            foreach ($nbrb_currencies as $currency_row) {
-                $currency = $this->dataJobsCurrency->getRowByCurrencyDate($currency_from, $date_rate);
+            foreach ($nbrb_currencies as $nbrb_currency) {
+                $currency_date = $this->dataJobsCurrency->getRowByCurrencyDate($nbrb_currency['abbreviation'], $date_rate);
 
-                if (empty($currency)) {
-                    $currency = $this->dataJobsCurrency->createRow([
-                        'abbreviation' => $currency_row['abbreviation'],
-                        'rate'         => $currency_row['rate'],
-                        'scale'        => $currency_row['scale'],
+                if (empty($currency_date)) {
+                    $currency_date = $this->dataJobsCurrency->createRow([
+                        'abbreviation' => $nbrb_currency['abbreviation'],
+                        'rate'         => $nbrb_currency['rate'],
+                        'scale'        => $nbrb_currency['scale'],
                         'date_rate'    => $date_rate->format("Y-m-d")
                     ]);
-                    $currency->save();
+                    $currency_date->save();
                 }
             }
 
             $currency = $this->dataJobsCurrency->getRowByCurrencyDate($currency_from, $date_rate);
+
+            // Если в списке валют все равно нет нужной
+            if (empty($currency)) {
+                $nbrb_currencies = (new Jobs\Index\NbrbApi())->getCurrency($date_rate, $currency_from);
+
+                foreach ($nbrb_currencies as $nbrb_currency) {
+                    $currency_date = $this->dataJobsCurrency->getRowByCurrencyDate($nbrb_currency['abbreviation'], $date_rate);
+
+                    if (empty($currency_date)) {
+                        $currency_date = $this->dataJobsCurrency->createRow([
+                            'abbreviation' => $nbrb_currency['abbreviation'],
+                            'rate'         => $nbrb_currency['rate'],
+                            'scale'        => $nbrb_currency['scale'],
+                            'date_rate'    => $date_rate->format("Y-m-d")
+                        ]);
+                        $currency_date->save();
+                    }
+                }
+            }
+
         }
 
-        return round(($price / $currency->scale) * $currency->rate, 2);
+        return $currency
+            ? round(($price / $currency->scale) * $currency->rate, 2)
+            : null;
     }
 }

@@ -38,6 +38,7 @@ class NbrbApi extends \Common {
         $url = "{$this->base_url}/api/exrates/rates";
 
         if ($currency) {
+            $currency = strtolower($currency);
             $url .= "/{$currency}";
         }
 
