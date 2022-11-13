@@ -37,12 +37,13 @@ abstract class Hh extends Index\Source {
         'декабрь'  => "12",  'декабря'  => "12",  'дек' => "12",
     ];
 
+
     /**
      * @return string
      */
     public function getTitle(): string {
 
-        return 'rabota.by';
+        return $this->getDomain($this->base_url);
     }
 
 
