@@ -12,6 +12,6 @@ require_once __DIR__ . '/../Hh.php';
  */
 class TurkestanHhKz extends Index\Hh {
 
-    protected string $base_url  = 'turkestan.hh.kz';
+    protected string $base_url  = 'https://turkestan.hh.kz';
     protected string $region_id = '192';
 }
