@@ -82,7 +82,7 @@ class View extends \Common {
 
             if ($row->url->getValue()) {
                 $url      = $row->url->getValue();
-                $row->url = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+                $row->url = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
             }
         }
 
@@ -162,7 +162,7 @@ class View extends \Common {
         foreach ($rows as $row) {
 
             $url      = $row->url->getValue();
-            $row->url = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->url = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_min_byn->getValue()) {
                 $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
@@ -245,7 +245,7 @@ class View extends \Common {
         foreach ($rows as $row) {
 
             $url      = $row->url->getValue();
-            $row->url = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->url = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_byn->getValue()) {
                 $row->salary_byn = \Tool::commafy($row->salary_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";

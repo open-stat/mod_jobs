@@ -94,8 +94,8 @@ class View extends \Common {
             $url           = $row->url->getValue();
             $employers_url = $row->employers_url->getValue();
 
-            $row->url           = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
-            $row->employers_url = "<a href=\"{$employers_url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->url           = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->employers_url = "<a href=\"{$employers_url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_min_byn->getValue()) {
                 $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
@@ -197,8 +197,8 @@ class View extends \Common {
             $url           = $row->url->getValue();
             $employers_url = $row->employers_url->getValue();
 
-            $row->url           = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
-            $row->employers_url = "<a href=\"{$employers_url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->url           = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->employers_url = "<a href=\"{$employers_url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_min_byn->getValue()) {
                 $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
@@ -301,8 +301,8 @@ class View extends \Common {
             $url           = $row->url->getValue();
             $employers_url = $row->employers_url->getValue();
 
-            $row->url           = "<a href=\"{$url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
-            $row->employers_url = "<a href=\"{$employers_url}\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->url           = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
+            $row->employers_url = "<a href=\"{$employers_url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_min_byn->getValue()) {
                 $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
