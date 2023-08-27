@@ -40,7 +40,7 @@ class ModAjax extends ajaxFunc {
 
         $page_id = $this->saveData($data);
 
-        $page_content = $this->modSources->dataSourcesPagesContents->getRowByPageId($page_id);
+        $page_content = $this->modSources->dataSourcesSitesPagesContents->getRowByPageId($page_id);
         $page_content->content = $content;
         $page_content->hash    = md5($content);
         $page_content->save();
