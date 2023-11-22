@@ -177,11 +177,10 @@ abstract class Hh extends Index\Source {
                 $employer_link = $this->filter($vacancy_dom, '.bloko-link_kind-tertiary')->first();
                 $labels        = $this->filter($vacancy_dom, '.search-result-label');
                 $region        = $this->filter($vacancy_dom, 'div[data-qa="vacancy-serp__vacancy-address"]')->first();
-                $money         = $this->filter($vacancy_dom, 'span.bloko-header-section-3[data-qa="vacancy-serp__vacancy-compensation"]')->first();
+                $money         = $this->filter($vacancy_dom, 'span[data-qa="vacancy-serp__vacancy-compensation"]')->first();
 
                 $salary_min      = null;
                 $salary_max      = null;
-                $currency        = null;
                 $currency_origin = null;
 
                 if ($money->count() > 0) {
@@ -201,19 +200,7 @@ abstract class Hh extends Index\Source {
                     }
                 }
 
-                switch ($currency_origin) {
-                    case 'бел.руб.': $currency = 'BYN'; break;
-                    case 'EUR':      $currency = 'EUR'; break;
-                    case 'USD':      $currency = 'USD'; break;
-                    case 'KZT':      $currency = 'KZT'; break;
-                    case 'сум':      $currency = 'UZS'; break;
-                    case 'GEL':      $currency = 'GEL'; break;
-                    case 'KGS':      $currency = 'KGS'; break;
-                    case 'руб.':
-                    case 'рос.руб.':
-                        $currency = 'RUB';
-                        break;
-                }
+                $currency = $currency_origin ? $this->getCurrency($currency_origin) : null;
 
                 $labels_title = [];
                 if ($labels->count() > 0) {
@@ -233,7 +220,21 @@ abstract class Hh extends Index\Source {
 
                     $url = $title->attr('href');
                     $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
-                    $url = preg_replace('~\?.*~ui', '', $url);
+
+                    if (mb_strpos($url, '/click?') !== false) {
+                        $btn_response = $this->filter($vacancy_dom, '.serp-item-controls a[data-qa="vacancy-serp__vacancy_response"]')->first();
+
+                        if ($btn_response->count() > 0) {
+                            $btn_response_href = $btn_response->attr('href');
+
+                            if ($btn_response_href && preg_match('~vacancyId=(\d*)~', $btn_response_href, $matches)) {
+                                $url = "{$this->base_url}/vacancy/{$matches[1]}";
+                            }
+                        }
+
+                    } else {
+                        $url = preg_replace('~\?.*~ui', '', $url);
+                    }
                     $url = trim($url);
                 }
 
@@ -362,7 +363,6 @@ abstract class Hh extends Index\Source {
                 $date_last_update     = $this->filter($vacancy_dom, 'span .bloko-text')->first();
 
                 $salary          = null;
-                $currency        = null;
                 $currency_origin = null;
 
                 if ($money->count() > 0) {
@@ -374,15 +374,8 @@ abstract class Hh extends Index\Source {
                     }
                 }
 
-                if ($currency_origin == "бел.руб.") {
-                    $currency = 'BYN';
-                } elseif ($currency_origin == "рос.руб.") {
-                    $currency = 'RUB';
-                } elseif ($currency_origin == "EUR") {
-                    $currency = 'EUR';
-                } elseif ($currency_origin == "USD") {
-                    $currency = 'USD';
-                }
+
+                $currency = $currency_origin ? $this->getCurrency($currency_origin) : null;
 
                 $age_text = null;
                 if ($age->count() > 0) {
@@ -871,5 +864,44 @@ abstract class Hh extends Index\Source {
         }
 
         return $string ?: '';
+    }
+
+
+    /**
+     * @param string $currency_origin
+     * @return string|null
+     */
+    private function getCurrency(string $currency_origin): ?string {
+
+        $currency = null;
+
+        switch ($currency_origin) {
+            case 'Br':
+            case 'бел.руб.': $currency = 'BYN'; break;
+            case '€':
+            case 'EUR':      $currency = 'EUR'; break;
+            case '$':
+            case 'USD':      $currency = 'USD'; break;
+            case '₸':
+            case 'KZT':      $currency = 'KZT'; break;
+            case "UZS":
+            case "so'm":
+            case 'сум':      $currency = 'UZS'; break;
+            case '₾':
+            case 'GEL':      $currency = 'GEL'; break;
+            case 'сом':
+            case 'KGS':      $currency = 'KGS'; break;
+            case '₼':
+            case 'AZN':      $currency = 'AZN'; break;
+            case '₽':
+            case 'руб.':
+            case 'руб':
+            case 'рос.руб.': $currency = 'RUB'; break;
+            case 'грн':
+            case '₴':
+            case 'UAH':      $currency = 'UAH'; break;
+        }
+
+        return $currency;
     }
 }

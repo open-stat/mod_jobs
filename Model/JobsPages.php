@@ -31,15 +31,15 @@ class JobsPages extends \Zend_Db_Table_Abstract {
      * @param int    $limit
      * @return Zend_Db_Table_Rowset_Abstract
      */
-    public function getRowsByTypeStatus(string $source_name, array $type, string $status, int $limit = 10000): Zend_Db_Table_Rowset_Abstract {
+    public function getRowsByTypeStatus(string $source_name, array $type, string $status, int $limit = 5000): Zend_Db_Table_Rowset_Abstract {
 
         $select = $this->select()
             ->where("source_name = ?", $source_name)
             ->where("type IN(?)", $type)
             ->where("status = ?", $status)
-            ->limit($limit)
             ->order('date_created ASC')
-            ->order('id ASC');
+            ->order('id ASC')
+            ->limit($limit);
 
         return $this->fetchAll($select);
     }
