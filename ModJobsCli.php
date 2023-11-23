@@ -518,4 +518,46 @@ class ModJobsCli extends Common {
             $resume_row->save();
         }
     }
+
+
+    /**
+     * @param string $source_name
+     * @param int    $page_id
+     * @param string $parse_type
+     * @return void
+     * @throws Zend_Config_Exception
+     * @throws Zend_Db_Table_Exception
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws Exception
+     */
+    public function showSources(string $source_name, int $page_id, string $parse_type = 'vacancies'): void {
+
+        $model   = new Jobs\Index\Model();
+        $sources = $model->getSources();
+
+        if (empty($sources[$source_name])) {
+            throw new \Exception('Указанный ресурс не найден');
+        }
+
+        $page = $this->modJobs->dataJobsPages->find($page_id)->current();
+
+        if (empty($page)) {
+            throw new \Exception('Указанная страница не найдена');
+        }
+
+        $source_class = $sources[$source_name];
+        $page_content = gzuncompress($page->content);
+
+        if ($parse_type == 'vacancies') {
+            $parse_page = $source_class->parseVacanciesList($page_content);
+
+        } else {
+            $parse_page = $source_class->parseResumeList($page_content);
+        }
+
+
+        echo '<pre>';
+        print_r($parse_page);
+        echo '</pre>';
+    }
 }
