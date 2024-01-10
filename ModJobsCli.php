@@ -559,5 +559,9 @@ class ModJobsCli extends Common {
         echo '<pre>';
         print_r($parse_page);
         echo '</pre>';
+
+        echo '<pre>';
+        echo htmlspecialchars($page_content);
+        echo '</pre>';
     }
 }

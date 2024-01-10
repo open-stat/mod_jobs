@@ -172,10 +172,15 @@ abstract class Hh extends Index\Source {
         if ($vacancies->count() > 0) {
             $result['vacancies'] = $vacancies->each(function (Crawler $vacancy_dom) {
 
-                $title         = $this->filter($vacancy_dom, '.serp-item__title')->first();
+                $title = $this->filter($vacancy_dom, '[data-qa="serp-item__title"]')->first();
+                if ($title->getNode(0)->tagName != 'a') {
+                    $title = $this->filter($vacancy_dom, '[data-page-analytics-event="vacancy_search_suitable_item"] a')->first();
+                }
+
                 $description   = $this->filter($vacancy_dom, '.g-user-content .bloko-text');
                 $employer_link = $this->filter($vacancy_dom, '.bloko-link_kind-tertiary')->first();
                 $labels        = $this->filter($vacancy_dom, '.search-result-label');
+                $labels2       = $this->filter($vacancy_dom, '[class^="label--"]');
                 $region        = $this->filter($vacancy_dom, 'div[data-qa="vacancy-serp__vacancy-address"]')->first();
                 $money         = $this->filter($vacancy_dom, 'span[data-qa="vacancy-serp__vacancy-compensation"]')->first();
 
@@ -209,6 +214,12 @@ abstract class Hh extends Index\Source {
                         return trim($label_text);
                     });
                 }
+                if ($labels2->count() > 0) {
+                    $labels_title = $labels2->each(function (Crawler $label_dom) {
+                        $label_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $label_dom->text());
+                        return trim($label_text);
+                    });
+                }
 
 
                 $title_text = null;
@@ -219,23 +230,26 @@ abstract class Hh extends Index\Source {
                     $title_text = trim($title_text, "\t\n\r\0 .,-");
 
                     $url = $title->attr('href');
-                    $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
 
-                    if (mb_strpos($url, '/click?') !== false) {
-                        $btn_response = $this->filter($vacancy_dom, '.serp-item-controls a[data-qa="vacancy-serp__vacancy_response"]')->first();
+                    if ($url) {
+                        $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
 
-                        if ($btn_response->count() > 0) {
-                            $btn_response_href = $btn_response->attr('href');
+                        if (mb_strpos($url, '/click?') !== false) {
+                            $btn_response = $this->filter($vacancy_dom, '.serp-item-controls a[data-qa="vacancy-serp__vacancy_response"]')->first();
 
-                            if ($btn_response_href && preg_match('~vacancyId=(\d*)~', $btn_response_href, $matches)) {
-                                $url = "{$this->base_url}/vacancy/{$matches[1]}";
+                            if ($btn_response->count() > 0) {
+                                $btn_response_href = $btn_response->attr('href');
+
+                                if ($btn_response_href && preg_match('~vacancyId=(\d*)~', $btn_response_href, $matches)) {
+                                    $url = "{$this->base_url}/vacancy/{$matches[1]}";
+                                }
                             }
-                        }
 
-                    } else {
-                        $url = preg_replace('~\?.*~ui', '', $url);
+                        } else {
+                            $url = preg_replace('~\?.*~ui', '', $url);
+                        }
+                        $url = trim($url);
                     }
-                    $url = trim($url);
                 }
 
                 $employer_url   = null;
@@ -346,21 +360,22 @@ abstract class Hh extends Index\Source {
             }
         }
 
-        $vacancies = $this->filter($dom, '[data-qa=resume-serp__results-search] .serp-item');
+        $resume_items = $this->filter($dom, '[data-qa=resume-serp__results-search] [data-qa=resume-serp__resume]');
 
 
-        if ($vacancies->count() > 0) {
-            $result['resume'] = $vacancies->each(function (Crawler $vacancy_dom) {
+        if ($resume_items->count() > 0) {
+            $result['resume'] = $resume_items->each(function (Crawler $resume_dom) {
 
-                $title                = $this->filter($vacancy_dom, '.serp-item__title')->first();
-                $age                  = $this->filter($vacancy_dom, '[data-qa="resume-serp__resume-age"]')->first();
-                $money                = $this->filter($vacancy_dom, '.bloko-text.bloko-text_large.bloko-text_strong')->first();
-                $labels               = $this->filter($vacancy_dom, '.search-result-label');
-                $experience           = $this->filter($vacancy_dom, '[data-qa="resume-serp__resume-excpirience-sum"]')->first();
-                $last_profession      = $this->filter($vacancy_dom, '[data-qa="resume-serp_resume-item-content"] [data-qa="last-experience-link"]')->first();
-                $last_employer        = $this->filter($vacancy_dom, '[data-qa="resume-serp_resume-item-content"] .bloko-text_strong')->first();
-                $last_employer_period = $this->filter($vacancy_dom, '[data-qa="resume-serp_resume-item-content"] span')->last();
-                $date_last_update     = $this->filter($vacancy_dom, 'span .bloko-text')->first();
+                $title                = $this->filter($resume_dom, '[data-qa="serp-item__title"]')->first();
+                $age                  = $this->filter($resume_dom, '[data-qa="resume-serp__resume-age"]')->first();
+                $money                = $this->filter($resume_dom, '.bloko-text.bloko-text_large.bloko-text_strong')->first();
+                $labels               = $this->filter($resume_dom, '.search-result-label');
+                $labels2              = $this->filter($resume_dom, '[class^="label--"]');
+                $experience           = $this->filter($resume_dom, '[data-qa="resume-serp__resume-excpirience-sum"]')->first();
+                $last_profession      = $this->filter($resume_dom, '[data-qa="resume-serp_resume-item-content"] [data-qa="last-experience-link"]')->first();
+                $last_employer        = $this->filter($resume_dom, '[data-qa="resume-serp_resume-item-content"] .bloko-text_strong')->first();
+                $last_employer_period = $this->filter($resume_dom, '[data-qa="resume-serp_resume-item-content"] span')->last();
+                $date_last_update     = $this->filter($resume_dom, 'span .bloko-text')->first();
 
                 $salary          = null;
                 $currency_origin = null;
@@ -386,6 +401,12 @@ abstract class Hh extends Index\Source {
                 $labels_title = [];
                 if ($labels->count() > 0) {
                     $labels_title = $labels->each(function (Crawler $label_dom) {
+                        $label_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $label_dom->text());
+                        return trim($label_text);
+                    });
+                }
+                if ($labels2->count() > 0) {
+                    $labels_title = $labels2->each(function (Crawler $label_dom) {
                         $label_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $label_dom->text());
                         return trim($label_text);
                     });
@@ -846,7 +867,7 @@ abstract class Hh extends Index\Source {
      */
     private function getDomain($url): string {
 
-        $parse_url = parse_url($url);
+        $parse_url = $url ? parse_url($url) : [];
         return $parse_url['host'] ?? '';
     }
 
