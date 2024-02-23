@@ -465,62 +465,6 @@ class ModJobsCli extends Common {
 
 
     /**
-     * Перенос данных в файлы
-     * @return void
-     * @throws Exception
-     * @no_cron
-     */
-    public function saveProductsContent(): void {
-
-        echo date('H:i:s') . " load\n";
-
-        $rows = $this->modJobs->dataJobsPages->fetchAll(
-            $this->modJobs->dataJobsPages->select()
-                ->where("content != ''")
-                ->limit(100000)
-        );
-
-        echo date('H:i:s') . " load count {$rows->count()}\n";
-
-        $percent_count = floor($rows->count() / 100);
-        $percent       = 1;
-        $i             = 1;
-
-        $model = new Jobs\Index\Model();
-
-        foreach ($rows as $row) {
-
-            if ($i == $percent_count) {
-                echo date('H:i:s') . " - {$percent}%\n";
-                $percent++;
-                $i = 1;
-            }
-            $i++;
-
-            $date = new \DateTime($row->date_created);
-            $meta = $row->options ? json_decode($row->options, true) : [];
-            $hash = md5(gzuncompress($row->content));
-
-            $contents = json_encode([
-                'source_name' => $row->source_name,
-                'type'        => $row->type,
-                'date'        => $date->format('Y-m-d H:i:s'),
-                'meta'        => $meta,
-                'content'     => base64_encode($row->content),
-            ], JSON_UNESCAPED_UNICODE);
-
-            $file_name = "{$row->source_name}-{$row->type}-{$hash}.json";
-            $file_path = $model->saveSourceFile('jobs', new \DateTime($row->date_created), $file_name, $contents);
-
-            $row->file_name = $file_name;
-            $row->file_size = filesize($file_path);
-            $row->content   = '';
-            $row->save();
-        }
-    }
-
-
-    /**
      * Закрытие неактивных вакансий и резюме
      * @return void
      * @throws Zend_Db_Table_Exception
