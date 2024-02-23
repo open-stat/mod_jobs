@@ -37,6 +37,7 @@ class JobsPages extends \Zend_Db_Table_Abstract {
             ->where("source_name = ?", $source_name)
             ->where("type IN(?)", $type)
             ->where("status = ?", $status)
+            ->where("file_name IS NOT NULL")
             ->order('date_created ASC')
             ->order('id ASC')
             ->limit($limit);
@@ -58,13 +59,26 @@ class JobsPages extends \Zend_Db_Table_Abstract {
             throw new \Exception('Не переданы обязательные параметры');
         }
 
+        $date      = new \DateTime();
+        $hash      = md5($page['content']);
+        $file_name = "{$source_name}-{$type}-{$hash}.json";
+
+        $file_path = (new \Core2\Mod\Jobs\Index\Model())->saveSourceFile('jobs', $date, $file_name, json_encode([
+            'source_name' => $source_name,
+            'type'        => $type,
+            'date'        => $date->format('Y-m-d H:i:s'),
+            'meta'        => $page['options'],
+            'content'     => base64_encode(gzcompress($page['content'], 9)),
+        ], JSON_UNESCAPED_UNICODE));
+
         $row = $this->createRow([
             'source_name' => $source_name,
             'type'        => $type,
             'status'      => 'pending',
             'url'         => $page['url'],
-            'content'     => gzcompress($page['content'], 9),
             'options'     => ! empty($page['options']) ? json_encode($page['options']) : null,
+            'file_name'   => $file_name,
+            'file_size'   => filesize($file_path),
         ]);
 
         return $row->save();
