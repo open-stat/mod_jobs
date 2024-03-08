@@ -45,6 +45,7 @@ class Model extends \Common {
      * @param string $source_name
      * @return Source
      * @throws \Zend_Config_Exception
+     * @throws \Exception
      */
     public function getSource(string $source_name): Source {
 
@@ -131,6 +132,8 @@ class Model extends \Common {
         $vacancy_row = $this->modJobs->dataJobsEmployersVacancies->getRowBySourceUrl($source_id, $vacancy['url']);
 
         if (empty($vacancy_row) || ! empty($vacancy_row->date_close)) {
+            $url = mb_substr($vacancy['url'], 0, 450);
+
             $vacancy_row = $this->modJobs->dataJobsEmployersVacancies->createRow([
                 'employer_id'      => $employer->id,
                 'source_id'        => $source_id,
@@ -138,7 +141,7 @@ class Model extends \Common {
                 'status_parse'     => 'pending',
                 'title'            => $vacancy['title'],
                 'region'           => $vacancy['region'] ?? null,
-                'url'              => $vacancy['url'],
+                'url'              => $url,
                 'salary_min_byn'   => $salary_min_byn,
                 'salary_max_byn'   => $salary_max_byn,
                 'salary_min'       => $vacancy['salary_min'] ?? null,
@@ -284,7 +287,7 @@ class Model extends \Common {
 
         $last_employer = null;
 
-        if ( ! empty($resume['last_employer_title'])) {
+        if ( ! empty($resume['last_employer_title']) && mb_strlen($resume['last_employer_title']) < 200) {
             $last_employer = $this->modJobs->dataJobsEmployers->getRowByTitle($resume['last_employer_title']);
 
 ;
@@ -300,22 +303,30 @@ class Model extends \Common {
         $currency   = $resume['currency'] ?: ($resume['currency_origin'] ?: null);
 
         if (empty($resume_row) || ! empty($resume_row->date_close)) {
+            $last_profession = $resume['last_profession'] ?? '';
+            $last_profession = mb_substr($last_profession, 0, 3800);
+
+            $last_employer_title = empty($last_employer) && ! empty($resume['last_employer_title'])
+                ? mb_substr($resume['last_employer_title'], 0, 3800)
+                : null;
+
             $resume_row = $this->modJobs->dataJobsResume->createRow([
-                'source_id'        => $source_id,
-                'last_employer_id' => $last_employer->id ?? null,
-                'last_profession'  => $resume['last_profession'] ?? null,
-                'title'            => $resume['title'],
-                'url'              => $resume['url'],
-                'age'              => $resume['age'] ?? null,
-                'experience_year'  => $resume['experience_year'] ?? null,
-                'experience_month' => $resume['experience_month'] ?? null,
-                'salary_byn'       => $salary_byn,
-                'salary'           => $resume['salary'] ?? null,
-                'currency'         => $currency,
-                'date_last_up'     => $resume['date_last_update'] ?? null,
-                'search_status'    => $options['search_status'] ?? null,
-                'date_publish'     => $date_created->format('Y-m-d'),
-                'date_close'       => null,
+                'source_id'           => $source_id,
+                'last_employer_id'    => $last_employer->id ?? null,
+                'last_profession'     => $last_profession ?: null,
+                'last_employer_title' => $last_employer_title,
+                'title'               => $resume['title'],
+                'url'                 => $resume['url'],
+                'age'                 => $resume['age'] ?? null,
+                'experience_year'     => $resume['experience_year'] ?? null,
+                'experience_month'    => $resume['experience_month'] ?? null,
+                'salary_byn'          => $salary_byn,
+                'salary'              => $resume['salary'] ?? null,
+                'currency'            => $currency,
+                'date_last_up'        => $resume['date_last_update'] ?? null,
+                'search_status'       => $options['search_status'] ?? null,
+                'date_publish'        => $date_created->format('Y-m-d'),
+                'date_close'          => null,
             ]);
             $resume_row->save();
 
@@ -683,7 +694,7 @@ class Model extends \Common {
     private function getSourceDir(): string {
 
         if ( ! self::$sources_dir) {
-            self::$sources_dir = $this->getModuleConfig('sources')?->sources_dir;
+            self::$sources_dir = $this->getModuleConfig('jobs')?->sources_dir;
 
             if (empty(self::$sources_dir)) {
                 throw new \Exception('Не указан sources_dir');

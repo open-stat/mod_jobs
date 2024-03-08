@@ -1,8 +1,8 @@
 <?php
 use Core2\Mod\Jobs;
-use Symfony\Component\DomCrawler\Crawler;
 
 require_once DOC_ROOT . 'core2/inc/classes/Common.php';
+require_once DOC_ROOT . 'core2/inc/classes/Parallel.php';
 require_once "classes/autoload.php";
 
 
@@ -352,6 +352,62 @@ class ModJobsCli extends Common {
 
 
     /**
+     * Загрузка курсов валют
+     * @return void
+     * @throws \GuzzleHttp\Exception\GuzzleException
+     * @throws Exception
+     */
+    public function loadCurrency() {
+
+        $date_rate = new \DateTime('2022-01-01');
+        $date_end  = date('Y-m-d');
+
+        while ($date_rate->format('Y-m-d') <= $date_end) {
+
+            $currency = $this->modJobs->dataJobsCurrency->fetchRow(
+                $this->modJobs->dataJobsCurrency->select()
+                    ->where('date_rate = ?', $date_rate->format('Y-m-d'))
+                    ->limit(1)
+            );
+
+            if ( ! $currency) {
+                try {
+                    $nbrb_currencies = (new Jobs\Index\NbrbApi())->getCurrency($date_rate);
+
+                    if (empty($nbrb_currencies)) {
+                        throw new \Exception('Не удалось получить курсы валют');
+                    }
+
+                    foreach ($nbrb_currencies as $nbrb_currency) {
+                        $currency_date = $this->modJobs->dataJobsCurrency->getRowByCurrencyDate($nbrb_currency['abbreviation'], $date_rate);
+
+                        if (empty($currency_date)) {
+                            $currency_date = $this->modJobs->dataJobsCurrency->createRow([
+                                'abbreviation' => $nbrb_currency['abbreviation'],
+                                'rate'         => $nbrb_currency['rate'],
+                                'scale'        => $nbrb_currency['scale'],
+                                'date_rate'    => $date_rate->format("Y-m-d")
+                            ]);
+                            $currency_date->save();
+                        }
+                    }
+
+                    echo $date_rate->format('Y-m-d') . PHP_EOL;
+
+
+                } catch (\Exception $e) {
+                    echo $e->getMessage() . ' - ' . $date_rate->format('Y-m-d') . PHP_EOL;
+                }
+                sleep(1);
+            }
+
+
+            $date_rate->modify('+1 day');
+        }
+    }
+
+
+    /**
      * Обработка информации
      * @throws \Exception
      * @throws \GuzzleHttp\Exception\GuzzleException
@@ -369,95 +425,136 @@ class ModJobsCli extends Common {
                     $source         = $this->modJobs->dataJobsSources->getRowByName($source_name, $source_class->getTitle());
                     $page_vacancies = $this->modJobs->dataJobsPages->getRowsByTypeStatus($source_name, ['vacancies_categories', 'vacancies_professions'], 'pending');
 
+                    $parallel = new \Core2\Parallel([ 'pool_size' => 8 ]);
+
                     foreach ($page_vacancies as $page) {
-                        $page->status = 'process';
-                        $page->save();
 
-                        $error_messages = [];
+                        $parallel->addTask(function () use ($source, $page) {
+                            $model = new Jobs\Index\Model();
 
-                        try {
-                            $date         = new \DateTime($page->date_created);
-                            $file_content = $model->getSourceFile('jobs', $date, $page->file_name);
+                            $page->status = 'process';
+                            $page->save();
 
-                            $page_content = gzuncompress(base64_decode($file_content['content']));
-                            $page_options = $page->options ? json_decode($page->options, true) : [];
-                            $page_options['date_created'] = $page->date_created;
+                            $error_messages = [];
 
-                            $parse_page = $source_class->parseVacanciesList($page_content);
+                            try {
+                                $date         = new \DateTime($page->date_created);
+                                $file_content = $model->getSourceFile('jobs', $date, $page->file_name);
 
-                            if ( ! empty($parse_page['vacancies'])) {
-                                foreach ($parse_page['vacancies'] as $vacancy) {
-                                    $this->db->beginTransaction();
-                                    try {
-                                        $model->saveVacancy((int)$source->id, $vacancy, $page_options);
-                                        $this->db->commit();
-                                    } catch (\Exception $e) {
-                                        $this->db->rollback();
-                                        $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                $page_content = gzuncompress(base64_decode($file_content['content']));
+                                $page_options = $page->options ? json_decode($page->options, true) : [];
+                                $page_options['date_created'] = $page->date_created;
+
+                                $source_class = $model->getSource($source->name);
+                                $parse_page   = $source_class->parseVacanciesList($page_content);
+
+                                if ( ! empty($parse_page['vacancies'])) {
+                                    foreach ($parse_page['vacancies'] as $vacancy) {
+                                        $this->db->beginTransaction();
+                                        try {
+                                            $model->saveVacancy((int)$source->id, $vacancy, $page_options);
+                                            $this->db->commit();
+                                        } catch (\Exception $e) {
+                                            $this->db->rollback();
+                                            $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                        }
                                     }
                                 }
+
+                                if ( ! empty($error_messages)) {
+                                    $this->sendErrorMessage('Ошибки при обработке вакансий', $error_messages);
+
+                                    $page->status = 'error';
+                                    $page->note   =  implode(PHP_EOL.PHP_EOL, $error_messages);
+                                    $page->save();
+
+                                } else {
+                                    $model->saveSummary((int)$source->id, $parse_page, $page_options);
+
+                                    $page->status = 'complete';
+                                    $page->note   = null;
+                                    $page->save();
+                                }
+
+
+                            } catch (\Exception $e) {
+                                $page->status = 'error';
+                                $page->note   = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                $page->save();
+
+                                $this->sendErrorMessage('Ошибка при обработке вакансий', $e);
                             }
-
-                            $model->saveSummary((int)$source->id, $parse_page, $page_options);
-
-                            $page->status = 'complete';
-                            $page->note   = implode(PHP_EOL.PHP_EOL, $error_messages);
-                            $page->save();
-
-
-                        } catch (\Exception $e) {
-                            $page->status = 'error';
-                            $page->note   = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
-                            $page->save();
-                        }
+                        });
                     }
+
+                    $parallel->start();
+
 
                     $pages_resume = $this->modJobs->dataJobsPages->getRowsByTypeStatus($source_name, ['resume_categories', 'resume_professions'], 'pending');
 
                     foreach ($pages_resume as $page) {
-                        $page->status = 'process';
-                        $page->save();
 
-                        $error_messages = [];
+                        $parallel->addTask(function () use ($source, $page) {
 
-                        try {
-                            $date         = new \DateTime($page->date_created);
-                            $file_content = $model->getSourceFile('jobs', $date, $page->file_name);
+                            $model = new Jobs\Index\Model();
 
-                            $page_content = gzuncompress(base64_decode($file_content['content']));
-                            $page_options = $page->options ? json_decode($page->options, true) : [];
-                            $page_options['date_created'] = $page->date_created;
+                            $page->status = 'process';
+                            $page->save();
 
-                            $parse_page = $source_class->parseResumeList($page_content, $page_options);
+                            $error_messages = [];
+
+                            try {
+                                $date         = new \DateTime($page->date_created);
+                                $file_content = $model->getSourceFile('jobs', $date, $page->file_name);
+
+                                $page_content = gzuncompress(base64_decode($file_content['content']));
+                                $page_options = $page->options ? json_decode($page->options, true) : [];
+                                $page_options['date_created'] = $page->date_created;
+
+                                $source_class = $model->getSource($source->name);
+                                $parse_page   = $source_class->parseResumeList($page_content, $page_options);
 
 
-                            if ( ! empty($parse_page['resume'])) {
-                                foreach ($parse_page['resume'] as $resume) {
-                                    $this->db->beginTransaction();
-                                    try {
-                                        $model->saveResume((int)$source->id, $resume, $page_options);
-                                        $this->db->commit();
-                                    } catch (\Exception $e) {
-                                        $this->db->rollback();
-                                        $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                if ( ! empty($parse_page['resume'])) {
+                                    foreach ($parse_page['resume'] as $resume) {
+                                        $this->db->beginTransaction();
+                                        try {
+                                            $model->saveResume((int)$source->id, $resume, $page_options);
+                                            $this->db->commit();
+                                        } catch (\Exception $e) {
+                                            $this->db->rollback();
+                                            $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                        }
                                     }
                                 }
+
+
+                                if ( ! empty($error_messages)) {
+                                    $this->sendErrorMessage('Ошибки при обработке вакансий', $error_messages);
+
+                                    $page->status = 'error';
+                                    $page->note   =  implode(PHP_EOL.PHP_EOL, $error_messages);
+                                    $page->save();
+
+                                } else {
+                                    $model->saveSummary((int)$source->id, $parse_page, $page_options);
+
+                                    $page->status = 'complete';
+                                    $page->note   = null;
+                                    $page->save();
+                                }
+
+                            } catch (\Exception $e) {
+                                $page->status = 'error';
+                                $page->note   = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                $page->save();
+
+                                $this->sendErrorMessage('Ошибка при обработке резюме', $e);
                             }
-
-
-                            $model->saveSummary((int)$source->id, $parse_page, $page_options);
-
-                            $page->status = 'complete';
-                            $page->note   = implode(PHP_EOL.PHP_EOL, $error_messages);
-                            $page->save();
-
-
-                        } catch (\Exception $e) {
-                            $page->status = 'error';
-                            $page->note   = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
-                            $page->save();
-                        }
+                        });
                     }
+
+                    $parallel->start();
                 }
             }
         }

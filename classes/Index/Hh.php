@@ -265,8 +265,11 @@ abstract class Hh extends Index\Source {
                 }
 
 
-                $region_text = explode(',', $region->text());
-                $region_text = trim($region_text[0], ', ');
+                $region_text = '';
+                if ($region->count() > 0) {
+                    $region_text = explode(',', $region->text());
+                    $region_text = trim($region_text[0], ', ');
+                }
 
                 return [
                     'title'           => $this->cleanText($title_text),

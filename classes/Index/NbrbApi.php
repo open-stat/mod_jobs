@@ -62,7 +62,7 @@ class NbrbApi extends \Common {
 
 
         $response = current($responses);
-        $data = @json_decode($response['content'], true);
+        $data = ! empty($response['content']) ? @json_decode($response['content'], true) : null;
 
 
 //        $response = $this->client->get($url, [
@@ -73,7 +73,11 @@ class NbrbApi extends \Common {
 //        $data = @json_decode($response->getBody()->getContents(), true);
 
         if (json_last_error() !== JSON_ERROR_NONE || empty($data)) {
-            throw new \Exception('Не удалось распознать json ответ от банка');
+            if (empty($response['content'])) {
+                throw new \Exception('Не удалось получить валюты: ' . ($response['error_message'] ?? ''));
+            } else {
+                throw new \Exception('Не удалось распознать json ответ от банка');
+            }
         }
 
         $currency_rows = [];
