@@ -416,6 +416,7 @@ class ModJobsCli extends Common {
 
         $model   = new Jobs\Index\Model();
         $sources = $model->getSources();
+        $config  = $this->getModuleConfig('jobs');
 
         if ( ! empty($sources)) {
             foreach ($sources as $source_name => $source_class) {
@@ -425,7 +426,7 @@ class ModJobsCli extends Common {
                     $source         = $this->modJobs->dataJobsSources->getRowByName($source_name, $source_class->getTitle());
                     $page_vacancies = $this->modJobs->dataJobsPages->getRowsByTypeStatus($source_name, ['vacancies_categories', 'vacancies_professions'], 'pending');
 
-                    $parallel = new \Core2\Parallel([ 'pool_size' => 8 ]);
+                    $parallel = new \Core2\Parallel([ 'pool_size' => $config?->pool_size ?: 4 ]);
 
                     foreach ($page_vacancies as $page) {
 
