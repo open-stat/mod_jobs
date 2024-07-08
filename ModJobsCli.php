@@ -8,6 +8,7 @@ require_once "classes/autoload.php";
 
 /**
  * @property ModJobsController $modJobs
+ * @property ModMetricsApi     $apiMetrics
  */
 class ModJobsCli extends Common {
 
@@ -15,10 +16,11 @@ class ModJobsCli extends Common {
      * Получение списка вакансий по категориям
      * @throws \Exception
      */
-    public function loadVacanciesCategories() {
+    public function loadVacanciesCategories(): void {
 
-        $model   = new Jobs\Index\Model();
-        $sources = $model->getSources();
+        $model    = new Jobs\Index\Model();
+        $sources  = $model->getSources();
+        $is_error = false;
 
         if ( ! empty($sources)) {
             foreach ($sources as $source_name => $source_class) {
@@ -47,15 +49,27 @@ class ModJobsCli extends Common {
                                             'category_title' => $category['title'],
                                         ],
                                     ]);
+
+
+                                    $this->apiMetrics->incPrometheus('core2_jobs_vacancies_load', 1, [
+                                        'labels'   => ['host' => parse_url($page['url'], PHP_URL_HOST) ?? '-', 'type' => 'categories'],
+                                        'job'      => 'core2',
+                                        'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                    ]);
                                 }
                             }
 
                         } catch (\Exception $e) {
                             echo $e->getMessage() . PHP_EOL;
+                            $is_error = true;
                         }
                     }
                 }
             }
+        }
+
+        if ($is_error) {
+            throw new \Exception('Во время получения вакансий произошли ошибки');
         }
     }
 
@@ -64,10 +78,11 @@ class ModJobsCli extends Common {
      * Получение списка вакансий по профессиям
      * @throws \Exception
      */
-    public function loadVacanciesProfessions() {
+    public function loadVacanciesProfessions(): void {
 
-        $model   = new Jobs\Index\Model();
-        $sources = $model->getSources();
+        $model    = new Jobs\Index\Model();
+        $sources  = $model->getSources();
+        $is_error = false;
 
         if ( ! empty($sources)) {
             foreach ($sources as $source_name => $source_class) {
@@ -97,15 +112,26 @@ class ModJobsCli extends Common {
                                             'profession_title' => $profession['title']
                                         ],
                                     ]);
+
+                                    $this->apiMetrics->incPrometheus('core2_jobs_vacancies_load', 1, [
+                                        'labels'   => ['host' => parse_url($page['url'], PHP_URL_HOST) ?? '-', 'type' => 'professions'],
+                                        'job'      => 'core2',
+                                        'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                    ]);
                                 }
                             }
 
                         } catch (\Exception $e) {
                             echo $e->getMessage() . PHP_EOL;
+                            $is_error = true;
                         }
                     }
                 }
             }
+        }
+
+        if ($is_error) {
+            throw new \Exception('Во время получения вакансий произошли ошибки');
         }
     }
 
@@ -114,7 +140,7 @@ class ModJobsCli extends Common {
      * Получение полных данных по вакансиям
      * @throws \Exception
      */
-    public function loadVacancies() {
+    public function loadVacancies(): void {
 
         $model   = new Jobs\Index\Model();
         $sources = $model->getSources();
@@ -131,7 +157,7 @@ class ModJobsCli extends Common {
                         $vacancy_row->status_load = 'process';
                         $vacancy_row->save();
 
-                        $page = $source_class->loadResume($vacancy_row->url);
+                        $page = $source_class->loadVacancies($vacancy_row->url);
 
                         if (empty($page['url']) || empty($page['content'])) {
                             continue;
@@ -145,6 +171,13 @@ class ModJobsCli extends Common {
 
                         $vacancy_row->status_load = 'complete';
                         $vacancy_row->save();
+
+
+                        $this->apiMetrics->incPrometheus('core2_jobs_vacancy_load', 1, [
+                            'labels'   => ['source' => $source_name],
+                            'job'      => 'core2',
+                            'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                        ]);
                     }
                 }
             }
@@ -158,8 +191,9 @@ class ModJobsCli extends Common {
      */
     public function loadResumeCategories() {
 
-        $model   = new Jobs\Index\Model();
-        $sources = $model->getSources();
+        $model    = new Jobs\Index\Model();
+        $sources  = $model->getSources();
+        $is_error = false;
 
         if ( ! empty($sources)) {
             foreach ($sources as $source_name => $source_class) {
@@ -191,11 +225,18 @@ class ModJobsCli extends Common {
                                             'search_status'  => 'active',
                                         ],
                                     ]);
+
+                                    $this->apiMetrics->incPrometheus('core2_jobs_resume_list_load', 1, [
+                                        'labels'   => ['host' => parse_url($page['url'], PHP_URL_HOST) ?? '-', 'type' => 'professions'],
+                                        'job'      => 'core2',
+                                        'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                    ]);
                                 }
                             }
 
                         } catch (\Exception $e) {
                             echo $e->getMessage() . PHP_EOL;
+                            $is_error = true;
                         }
 
 
@@ -218,15 +259,26 @@ class ModJobsCli extends Common {
                                             'search_status'  => 'passive',
                                         ],
                                     ]);
+
+                                    $this->apiMetrics->incPrometheus('core2_jobs_resume_list_load', 1, [
+                                        'labels'   => ['host' => parse_url($page['url'], PHP_URL_HOST) ?? '-', 'type' => 'categories'],
+                                        'job'      => 'core2',
+                                        'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                    ]);
                                 }
                             }
 
                         } catch (\Exception $e) {
                             echo $e->getMessage() . PHP_EOL;
+                            $is_error = true;
                         }
                     }
                 }
             }
+        }
+
+        if ($is_error) {
+            throw new \Exception('Во время получения резюме произошли ошибки');
         }
     }
 
@@ -237,8 +289,9 @@ class ModJobsCli extends Common {
      */
     public function loadResumeProfessions() {
 
-        $model   = new Jobs\Index\Model();
-        $sources = $model->getSources();
+        $model    = new Jobs\Index\Model();
+        $sources  = $model->getSources();
+        $is_error = false;
 
         if ( ! empty($sources)) {
             foreach ($sources as $source_name => $source_class) {
@@ -269,11 +322,19 @@ class ModJobsCli extends Common {
                                             'search_status'    => 'active',
                                         ],
                                     ]);
+
+
+                                    $this->apiMetrics->incPrometheus('core2_jobs_resume_list_load', 1, [
+                                        'labels'   => ['host' => parse_url($page['url'], PHP_URL_HOST) ?? '-', 'type' => 'professions'],
+                                        'job'      => 'core2',
+                                        'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                    ]);
                                 }
                             }
 
                         } catch (\Exception $e) {
                             echo $e->getMessage() . PHP_EOL;
+                            $is_error = true;
                         }
 
 
@@ -296,15 +357,26 @@ class ModJobsCli extends Common {
                                             'search_status'    => 'passive',
                                         ],
                                     ]);
+
+                                    $this->apiMetrics->incPrometheus('core2_jobs_resume_list_load', 1, [
+                                        'labels'   => ['host' => parse_url($page['url'], PHP_URL_HOST) ?? '-', 'type' => 'professions'],
+                                        'job'      => 'core2',
+                                        'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                    ]);
                                 }
                             }
 
                         } catch (\Exception $e) {
                             echo $e->getMessage() . PHP_EOL;
+                            $is_error = true;
                         }
                     }
                 }
             }
+        }
+
+        if ($is_error) {
+            throw new \Exception('Во время получения резюме произошли ошибки');
         }
     }
 
@@ -344,6 +416,13 @@ class ModJobsCli extends Common {
 
                         $resume_row->status_load = 'complete';
                         $resume_row->save();
+
+
+                        $this->apiMetrics->incPrometheus('core2_jobs_resume_load', 1, [
+                            'labels'   => ['source' => $source_name],
+                            'job'      => 'core2',
+                            'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                        ]);
                     }
                 }
             }
@@ -454,6 +533,13 @@ class ModJobsCli extends Common {
                                         $this->db->beginTransaction();
                                         try {
                                             $model->saveVacancy((int)$source->id, $vacancy, $page_options);
+
+                                            $this->apiMetrics->incPrometheus('core2_jobs_vacancy_process', 1, [
+                                                'labels'   => ['source' => $source->name],
+                                                'job'      => 'core2',
+                                                'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                            ]);
+
                                             $this->db->commit();
                                         } catch (\Exception $e) {
                                             $this->db->rollback();
@@ -521,7 +607,15 @@ class ModJobsCli extends Common {
                                         $this->db->beginTransaction();
                                         try {
                                             $model->saveResume((int)$source->id, $resume, $page_options);
+
+                                            $this->apiMetrics->incPrometheus('core2_jobs_resume_process', 1, [
+                                                'labels'   => ['source' => $source->name],
+                                                'job'      => 'core2',
+                                                'instance' => $_SERVER['SERVER_NAME'] ?? 'production',
+                                            ]);
+
                                             $this->db->commit();
+
                                         } catch (\Exception $e) {
                                             $this->db->rollback();
                                             $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
