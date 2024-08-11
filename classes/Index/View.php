@@ -98,19 +98,19 @@ class View extends \Common {
             $row->employers_url = "<a href=\"{$employers_url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_min_byn->getValue()) {
-                $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_min_byn = \Core2\Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_min_byn->setAttr('class', 'text-right');
             }
 
             if ($row->salary_max_byn->getValue()) {
-                $row->salary_max_byn = \Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_max_byn = \Core2\Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_max_byn->setAttr('class', 'text-right');
             }
 
-            $row->salary_min = \Tool::commafy($row->salary_min->getValue());
+            $row->salary_min = \Core2\Tool::commafy($row->salary_min->getValue());
             $row->salary_min->setAttr('class', 'text-right');
 
-            $row->salary_max = \Tool::commafy($row->salary_max->getValue());
+            $row->salary_max = \Core2\Tool::commafy($row->salary_max->getValue());
             $row->salary_max->setAttr('class', 'text-right');
         }
 
@@ -201,19 +201,19 @@ class View extends \Common {
             $row->employers_url = "<a href=\"{$employers_url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_min_byn->getValue()) {
-                $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_min_byn = \Core2\Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_min_byn->setAttr('class', 'text-right');
             }
 
             if ($row->salary_max_byn->getValue()) {
-                $row->salary_max_byn = \Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_max_byn = \Core2\Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_max_byn->setAttr('class', 'text-right');
             }
 
-            $row->salary_min = \Tool::commafy($row->salary_min->getValue());
+            $row->salary_min = \Core2\Tool::commafy($row->salary_min->getValue());
             $row->salary_min->setAttr('class', 'text-right');
 
-            $row->salary_max = \Tool::commafy($row->salary_max->getValue());
+            $row->salary_max = \Core2\Tool::commafy($row->salary_max->getValue());
             $row->salary_max->setAttr('class', 'text-right');
         }
 
@@ -305,19 +305,19 @@ class View extends \Common {
             $row->employers_url = "<a href=\"{$employers_url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_min_byn->getValue()) {
-                $row->salary_min_byn = \Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_min_byn = \Core2\Tool::commafy($row->salary_min_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_min_byn->setAttr('class', 'text-right');
             }
 
             if ($row->salary_max_byn->getValue()) {
-                $row->salary_max_byn = \Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_max_byn = \Core2\Tool::commafy($row->salary_max_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_max_byn->setAttr('class', 'text-right');
             }
 
-            $row->salary_min = \Tool::commafy($row->salary_min->getValue());
+            $row->salary_min = \Core2\Tool::commafy($row->salary_min->getValue());
             $row->salary_min->setAttr('class', 'text-right');
 
-            $row->salary_max = \Tool::commafy($row->salary_max->getValue());
+            $row->salary_max = \Core2\Tool::commafy($row->salary_max->getValue());
             $row->salary_max->setAttr('class', 'text-right');
         }
 

@@ -546,6 +546,10 @@ class ModJobsCli extends Common {
                                             $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
                                         }
                                     }
+                                } else {
+                                    if (empty($parse_page['content_correct'])) {
+                                        $error_messages[] = "Вакансии не найдены. id =  {$page->id}";
+                                    }
                                 }
 
                                 if ( ! empty($error_messages)) {
@@ -620,6 +624,10 @@ class ModJobsCli extends Common {
                                             $this->db->rollback();
                                             $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
                                         }
+                                    }
+                                } else {
+                                    if (empty($parse_page['content_correct'])) {
+                                        $error_messages[] = "Резюме не найдены. id =  {$page->id}";
                                     }
                                 }
 
@@ -758,7 +766,7 @@ class ModJobsCli extends Common {
 
 
         echo '<pre>';
-        print_r($parse_page);
+        echo htmlspecialchars(print_r($parse_page, true));
         echo '</pre>';
 
         echo '<pre>';

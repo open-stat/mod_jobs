@@ -154,6 +154,7 @@ abstract class Hh extends Index\Source {
             'total_resume'       => null,
             'total_employers'    => null,
             'total_week_invites' => null,
+            'content_correct'    => false,
             'vacancies_found'    => null,
             'vacancies'          => [],
         ];
@@ -166,11 +167,22 @@ abstract class Hh extends Index\Source {
         }
 
 
+        $not_found = $this->filter($dom, 'h1.bloko-header-section-3, h1[data-qa="title"]');
+        if ($not_found->count() > 0) {
+            $text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $not_found->text());
+            if (preg_match('~По\s+запросу\s+«[^»]+»\s+ничего\s+не\s+найдено~u', $text) ||
+                preg_match('~По\s+запросу\s+ничего\s+не\s+найдено~u', $text)
+            ) {
+                $result['content_correct'] = true;
+            }
+        }
+
+
         $vacancies = $this->filter($dom, '.vacancy-serp-content .serp-item');
 
-
         if ($vacancies->count() > 0) {
-            $result['vacancies'] = $vacancies->each(function (Crawler $vacancy_dom) {
+            $result['content_correct'] = true;
+            $result['vacancies']       = $vacancies->each(function (Crawler $vacancy_dom) {
 
                 $title = $this->filter($vacancy_dom, '[data-qa="serp-item__title"]')->first();
                 if ($title->getNode(0)->tagName != 'a') {
@@ -288,6 +300,321 @@ abstract class Hh extends Index\Source {
         }
 
 
+        if (empty($result['vacancies'])) {
+            //$vacancies = $this->filter($dom, '.vacancy-serp-content .vacancy-search-item__card');
+            $vacancies = $this->filter($dom, '.vacancy-search-item__card');
+
+            if ($vacancies->count() > 0) {
+                $result['content_correct'] = true;
+                $result['vacancies']       = $vacancies->each(function (Crawler $vacancy_dom) {
+
+                    $title = $this->filter($vacancy_dom, '.serp-item__title-link-wrapper a')->first();
+
+                    $description   = $this->filter($vacancy_dom, '.g-user-content .bloko-text');
+                    $employer_link = $this->filter($vacancy_dom, '[data-qa="vacancy-serp__vacancy-employer"]')->first();
+                    $labels        = $this->filter($vacancy_dom, '.search-result-label');
+                    $labels2       = $this->filter($vacancy_dom, '[class^="label--"]');
+                    $region        = $this->filter($vacancy_dom, '[data-qa="vacancy-serp__vacancy-address"]')->first();
+                    $money         = $this->filter($vacancy_dom, '[class^="wide-container--"] [class^="compensation-labels--"] [class^="fake-magritte-primary-text--"]')->first();
+
+                    $salary_min      = null;
+                    $salary_max      = null;
+                    $currency_origin = null;
+                    $labels_title    = [];
+
+                    if ($money->count() > 0) {
+                        $money_text = preg_replace("~( |&nbsp;|\h)~ui", '', $money->text());
+
+                        if (preg_match('~(?<min>\d+)\s*–\s*(?<max>\d+)\s*(?<currency>[^а-яА-Я\d]+)~ui', $money_text, $matches)) {
+                            $salary_min      = $matches['min'];
+                            $salary_max      = $matches['max'];
+                            $currency_origin = trim($matches['currency']);
+
+                        } else {
+                            if (preg_match('~от[^\w\d]*(?<min>\d+)\s*(?<currency>[^а-яА-Я\d]*)~ui', $money_text, $matches)) {
+                                $salary_min      = $matches['min'];
+                                $currency_origin = trim($matches['currency']);
+
+                            } elseif (preg_match('~до[^\w\d]*(?<max>\d+)\s*(?<currency>[^а-яА-Я\d]*)~ui', $money_text, $matches)) {
+                                $salary_max      = $matches['max'];
+                                $currency_origin = trim($matches['currency']);
+                            }
+                        }
+
+                        if (mb_strpos($money_text, 'довычетаналогов') !== false) {
+                            $labels_title[] = 'До вычета налогов';
+                        }
+                    }
+
+                    $currency = $currency_origin ? $this->getCurrency($currency_origin) : null;
+
+                    if ($labels->count() > 0) {
+                        $labels->each(function (Crawler $label_dom) use (&$labels_title) {
+                            $label_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $label_dom->text());
+                            $labels_title[] = trim($label_text);
+                        });
+                    }
+                    if ($labels2->count() > 0) {
+                        $labels2->each(function (Crawler $label_dom) use (&$labels_title) {
+                            $label_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $label_dom->text());
+                            $labels_title[] = trim($label_text);
+                        });
+                    }
+
+
+                    $title_text = null;
+                    $url        = null;
+
+                    if ($title->count() > 0) {
+                        $title_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $title->text());
+                        $title_text = trim($title_text, "\t\n\r\0 .,-");
+
+                        $url = $title->attr('href');
+
+                        if ($url) {
+                            $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
+
+                            if (mb_strpos($url, '/click?') !== false) {
+                                $url          = '';
+                                $btn_response = $this->filter($vacancy_dom, 'a[data-qa="vacancy-serp__vacancy_response"]')->first();
+
+                                if ($btn_response->count() > 0) {
+                                    $btn_response_href = $btn_response->attr('href');
+
+                                    if ($btn_response_href && preg_match('~vacancyId=(\d*)~', $btn_response_href, $matches)) {
+                                        $url = "{$this->base_url}/vacancy/{$matches[1]}";
+                                    }
+                                }
+
+                            } else {
+                                $url = preg_replace('~\?.*~ui', '', $url);
+                            }
+                            $url = trim($url);
+                        }
+                    }
+
+                    $employer_url   = null;
+                    $employer_title = null;
+
+                    if ($employer_link->count() > 0) {
+                        $employer_url = $employer_link->attr('href');
+                        $employer_url = $this->getDomain($employer_url) ? $employer_url : "{$this->base_url}{$employer_url}";
+                        $employer_url = preg_replace('~\?.*~ui', '', $employer_url);
+                        $employer_url = trim($employer_url);
+
+                        $employer_title = preg_replace("~( |&nbsp;|\h)~ui", ' ', $employer_link->text());
+                    }
+
+
+                    $region_text = '';
+                    if ($region->count() > 0) {
+                        $region_text = explode(',', $region->text());
+                        $region_text = trim($region_text[0], ', ');
+                    }
+
+                    return [
+                        'title'           => $this->cleanText($title_text),
+                        'url'             => $url,
+                        'region'          => $this->cleanText($region_text),
+                        'salary_min'      => $salary_min,
+                        'salary_max'      => $salary_max,
+                        'currency'        => $currency,
+                        'currency_origin' => $this->cleanText($currency_origin),
+                        'labels'          => array_unique($labels_title),
+                        'description'     => $description->count() > 0 ? $this->cleanText($description->text()) : '',
+                        'employer_title'  => $this->cleanText($employer_title),
+                        'employer_url'    => $employer_url,
+                    ];
+                });
+            }
+        }
+
+
+        if (empty($result['vacancies'])) {
+            //$vacancies = $this->filter($dom, '.vacancy-serp-content [data-qa~="vacancy-serp__vacancy"]');
+            $vacancies = $this->filter($dom, '[data-qa~="vacancy-serp__vacancy"]');
+
+            if ($vacancies->count() > 0) {
+                $result['content_correct'] = true;
+                $result['vacancies']       = $vacancies->each(function (Crawler $vacancy_dom) {
+
+                    $title         = $this->filter($vacancy_dom, 'a[data-qa~="serp-item__title"]')->first();
+                    $description   = $this->filter($vacancy_dom, '[data-qa~="vacancy-serp__vacancy_snippet_responsibility"]');
+                    $employer_link = $this->filter($vacancy_dom, '[data-qa="vacancy-serp__vacancy-employer"]')->first();
+                    $labels        = $this->filter($vacancy_dom, '[class^="wide-container-magritte--"] [class^="compensation-labels--"] [class^="magritte-tag__label___"]');
+                    $region        = $this->filter($vacancy_dom, '[data-qa="vacancy-serp__vacancy-address"]')->first();
+                    $money         = $this->filter($vacancy_dom, '[class^="wide-container"] [class^="compensation-labels--"] [class*="magritte-text_style-primary___"]')->first();
+
+                    $salary_min      = null;
+                    $salary_max      = null;
+                    $currency_origin = null;
+                    $labels_title    = [];
+
+                    if ($money->count() > 0) {
+                        $money_text = preg_replace("~( |&nbsp;|\h)~ui", '', $money->text());
+
+                        if (preg_match('~(?<min>\d+)\s*–\s*(?<max>\d+)\s*(?<currency>[^а-яА-Я\d]+)~ui', $money_text, $matches)) {
+                            $salary_min      = $matches['min'];
+                            $salary_max      = $matches['max'];
+                            $currency_origin = trim($matches['currency']);
+
+                        } else {
+                            if (preg_match('~от[^\w\d]*(?<min>\d+)\s*(?<currency>[^а-яА-Я\d]*)~ui', $money_text, $matches)) {
+                                $salary_min      = $matches['min'];
+                                $currency_origin = trim($matches['currency']);
+
+                            } elseif (preg_match('~до[^\w\d]*(?<max>\d+)\s*(?<currency>[^а-яА-Я\d]*)~ui', $money_text, $matches)) {
+                                $salary_max      = $matches['max'];
+                                $currency_origin = trim($matches['currency']);
+                            }
+                        }
+
+                        if (mb_strpos($money_text, 'довычетаналогов') !== false) {
+                            $labels_title[] = 'До вычета налогов';
+                        }
+                    }
+
+                    $currency = $currency_origin ? $this->getCurrency($currency_origin) : null;
+
+                    if ($labels->count() > 0) {
+                        $labels->each(function (Crawler $label_dom) use (&$labels_title) {
+                            $label_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $label_dom->text());
+                            $labels_title[] = trim($label_text);
+                        });
+                    }
+
+
+                    $title_text = null;
+                    $url        = null;
+
+                    if ($title->count() > 0) {
+                        $title_text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $title->text());
+                        $title_text = trim($title_text, "\t\n\r\0 .,-");
+
+                        $url = $title->attr('href');
+
+                        if ($url) {
+                            $url = $this->getDomain($url) ? $url : "{$this->base_url}{$url}";
+
+                            if (mb_strpos($url, '/click?') !== false) {
+                                $url          = '';
+                                $btn_response = $this->filter($vacancy_dom, 'a[data-qa="vacancy-serp__vacancy_response"]')->first();
+
+                                if ($btn_response->count() > 0) {
+                                    $btn_response_href = $btn_response->attr('href');
+
+                                    if ($btn_response_href && preg_match('~vacancyId=(\d*)~', $btn_response_href, $matches)) {
+                                        $url = "{$this->base_url}/vacancy/{$matches[1]}";
+                                    }
+                                }
+
+                            } else {
+                                $url = preg_replace('~\?.*~ui', '', $url);
+                            }
+                            $url = trim($url);
+                        }
+                    }
+
+                    $employer_url   = null;
+                    $employer_title = null;
+
+                    if ($employer_link->count() > 0) {
+                        $employer_url = $employer_link->attr('href');
+                        $employer_url = $this->getDomain($employer_url) ? $employer_url : "{$this->base_url}{$employer_url}";
+                        $employer_url = preg_replace('~\?.*~ui', '', $employer_url);
+                        $employer_url = trim($employer_url);
+
+                        $employer_title = preg_replace("~( |&nbsp;|\h)~ui", ' ', $employer_link->text());
+                    }
+
+
+                    $region_text = '';
+                    if ($region->count() > 0) {
+                        $region_text = explode(',', $region->text());
+                        $region_text = trim($region_text[0], ', ');
+                    }
+
+                    return [
+                        'title'           => $this->cleanText($title_text),
+                        'url'             => $url,
+                        'region'          => $this->cleanText($region_text),
+                        'salary_min'      => $salary_min,
+                        'salary_max'      => $salary_max,
+                        'currency'        => $currency,
+                        'currency_origin' => $this->cleanText($currency_origin),
+                        'labels'          => array_unique($labels_title),
+                        'description'     => $description->count() > 0 ? $this->cleanText($description->text()) : '',
+                        'employer_title'  => $this->cleanText($employer_title),
+                        'employer_url'    => $employer_url,
+                    ];
+                });
+            }
+        }
+
+
+        if (empty($result['vacancies'])) {
+            $template = $this->filter($dom, 'template#HH-Lux-InitialState');
+
+            if ($template->count() > 0) {
+                $content_json = $template->html();
+
+                $vacancies = @json_decode($content_json, true);
+
+
+                if ($vacancies &&
+                    ! empty($vacancies['vacancySearchResult'])
+                ) {
+                    $result['content_correct'] = true;
+                }
+
+                if ($vacancies &&
+                    ! empty($vacancies['vacancySearchResult']) &&
+                    ! empty($vacancies['vacancySearchResult']['vacancies']) &&
+                    is_array($vacancies['vacancySearchResult']['vacancies'])
+                ) {
+                    foreach ($vacancies['vacancySearchResult']['vacancies'] as $vacancy) {
+
+                        $labels_title = [];
+
+                        if ( ! empty($vacancy['@workSchedule']) && $vacancy['@workSchedule'] == 'fullDay') {
+                            $labels_title[] = 'Полный рабочий день';
+                        }
+                        if ( ! empty($vacancy['workExperience'])) {
+                            switch ($vacancy['workExperience']) {
+                                case 'between1And3': $labels_title[] = 'Опыт 1-3 лет'; break;
+                                case 'between3And6': $labels_title[] = 'Опыт 3-6 лет'; break;
+                            }
+                        }
+
+
+                        $currency_origin = ! empty($vacancy['compensation']) && ! empty($vacancy['compensation']['currencyCode'])
+                            ? $vacancy['compensation']['currencyCode']
+                            : null;
+
+                        $currency = $currency_origin
+                            ? $this->getCurrency($currency_origin)
+                            : null;
+
+                        $result['vacancies'][] = [
+                            'title'           => $vacancy['name'] ?? null,
+                            'url'             => ! empty($vacancy['links']) && ! empty($vacancy['links']['desktop']) ? $vacancy['links']['desktop'] : null,
+                            'region'          => ! empty($vacancy['area']) && ! empty($vacancy['area']['name']) ? $vacancy['area']['name'] : null,
+                            'salary_min'      => ! empty($vacancy['compensation']) && ! empty($vacancy['compensation']['from']) ? $vacancy['compensation']['from'] : null,
+                            'salary_max'      => ! empty($vacancy['compensation']) && ! empty($vacancy['compensation']['to']) ? $vacancy['compensation']['to'] : null,
+                            'currency'        => $currency,
+                            'currency_origin' => $currency_origin,
+                            'labels'          => array_unique($labels_title),
+                            'description'     => '',
+                            'employer_title'  => ! empty($vacancy['company']) && ! empty($vacancy['company']['name']) ? $vacancy['company']['name'] : null,
+                            'employer_url'    => ! empty($vacancy['company']) && ! empty($vacancy['company']['id']) ? "{$this->base_url}/employer/{$vacancy['company']['id']}" : null,
+                            'employer_site'   => ! empty($vacancy['company']) && ! empty($vacancy['company']['companySiteUrl']) ? $vacancy['company']['companySiteUrl'] : null,
+                        ];
+                    }
+                }
+            }
+        }
+
+
         $stat = $this->filter($dom, '[data-qa="footer"] .bloko-columns-wrapper .bloko-column p')->first();
 
         if ($stat->count() > 0) {
@@ -331,6 +658,7 @@ abstract class Hh extends Index\Source {
             'total_resume'       => null,
             'total_employers'    => null,
             'total_week_invites' => null,
+            'content_correct'    => false,
             'people_found'       => null,
             'resume_found'       => null,
             'resume'             => [],
@@ -363,11 +691,21 @@ abstract class Hh extends Index\Source {
             }
         }
 
+
+        $not_found = $this->filter($dom, '.bloko-gap.bloko-gap_top.bloko-gap_bottom');
+        if ($not_found->count() > 0) {
+            $text = preg_replace("~( |&nbsp;|\h)~ui", ' ', $not_found->text());
+            if (preg_match('~Попробуйте\s+другие\s+варианты\s+поискового\s+запроса\s+или\s+уберите\s+фильтры~u', $text)) {
+                $result['content_correct'] = true;
+            }
+        }
+
         $resume_items = $this->filter($dom, '[data-qa=resume-serp__results-search] [data-qa=resume-serp__resume]');
 
 
         if ($resume_items->count() > 0) {
-            $result['resume'] = $resume_items->each(function (Crawler $resume_dom) {
+            $result['content_correct'] = true;
+            $result['resume']          = $resume_items->each(function (Crawler $resume_dom) {
 
                 $title                = $this->filter($resume_dom, '[data-qa="serp-item__title"]')->first();
                 $age                  = $this->filter($resume_dom, '[data-qa="resume-serp__resume-age"]')->first();
@@ -504,6 +842,132 @@ abstract class Hh extends Index\Source {
                     'date_last_update'        => $date_last_update,
                 ];
             });
+
+        }
+
+
+        if (empty($result['resume'])) {
+            $template = $this->filter($dom, 'template#HH-Lux-InitialState');
+
+            if ($template->count() > 0) {
+                $content_json = $template->html();
+
+                $vacancies = @json_decode($content_json, true);
+
+
+                if ($vacancies &&
+                    ! empty($vacancies['resumeSearchResult'])
+                ) {
+                    $result['content_correct'] = true;
+                }
+
+                if ($vacancies &&
+                    ! empty($vacancies['resumeSearchResult']) &&
+                    ! empty($vacancies['resumeSearchResult']['resumes']) &&
+                    is_array($vacancies['resumeSearchResult']['resumes'])
+                ) {
+                    foreach ($vacancies['resumeSearchResult']['resumes'] as $resume) {
+
+                        $currency_origin = ! empty($resume['salary']) && ! empty($resume['salary'][0]) && ! empty($resume['salary'][0]['currency'])
+                            ? $resume['salary'][0]['currency']
+                            : null;
+
+                        $currency = $currency_origin
+                            ? $this->getCurrency($currency_origin)
+                            : null;
+
+                        $salary = ! empty($resume['salary']) && ! empty($resume['salary'][0]) && ! empty($resume['salary'][0]['amount'])
+                            ? $resume['salary'][0]['amount']
+                            : null;
+
+                        $url = ! empty($resume['_attributes']) && ! empty($resume['_attributes']['hash'])
+                            ? "{$this->base_url}/resume/{$resume['_attributes']['hash']}"
+                            : null;
+
+                        $age = ! empty($resume['age']) && ! empty($resume['age'][0]) && ! empty($resume['age'][0]['string'])
+                            ? $resume['age'][0]['string']
+                            : null;
+
+                        $labels_title = [];
+
+                        if ( ! empty($resume['keySkills'])) {
+                            foreach ($resume['keySkills'] as $item) {
+                                if ( ! empty($item['string'])) {
+                                    $labels_title[] = $item['string'];
+                                }
+                            }
+                        }
+
+                        $count_years  = 0;
+                        $count_months = 0;
+                        $count_days   = 0;
+
+                        $last_profession      = null;
+                        $last_employer_title  = null;
+                        $last_employer_period = null;
+
+                        if ( ! empty($resume['shortExperience'])) {
+                            foreach ($resume['shortExperience'] as $experience) {
+                                if (empty($last_employer_title) && ! empty($experience['companyName'])) {
+                                    $last_employer_title = $experience['companyName'];
+                                }
+                                if (empty($last_profession) && ! empty($experience['position'])) {
+                                    $last_profession = $experience['position'];
+                                }
+                                if (empty($last_employer_period) && ! empty($experience['startDate'])) {
+                                    $last_employer_period = "{$experience['startDate']} - " . ($experience['endDate'] ?? '');
+                                }
+
+                                if ( ! empty($experience['startDate'])) {
+
+                                    $date_start = new \DateTime($experience['startDate']);
+                                    $date_end   = new \DateTime($experience['endDate'] ?? 'now');
+
+                                    $interval = $date_start->diff($date_end);
+
+                                    if ($interval) {
+                                        $count_years  += $interval->y;
+                                        $count_months += $interval->m;
+                                        $count_days   += $interval->d;
+                                    }
+                                }
+                            }
+
+                            if ($count_years > 0) {
+                                $count_days += $count_years * 365;
+                            }
+                            if ($count_months > 0) {
+                                $count_days += $count_months * 30;
+                            }
+                        }
+
+                        $experience_year  = $count_days > 0 ? floor($count_days / 365) : 0;
+                        $experience_month = $count_days > 0 ? floor(($count_days - ($experience_year * 365)) / 30) : 0;
+
+                        $date_last_update = ! empty($resume['lastChangeTimeDetails']) && ! empty($resume['lastChangeTimeDetails'][0]) && ! empty($resume['lastChangeTimeDetails'][0]['date'])
+                            ? date('Y-m-d H:i:s', ($resume['lastChangeTimeDetails'][0]['date'] / 1000))
+                            : null;
+
+                        $result['resume'][] = [
+                            'title'                   => ! empty($resume['title']) && ! empty($resume['title'][0]) && ! empty($resume['title'][0]['string']) ? $resume['title'][0]['string'] : null,
+                            'url'                     => $url,
+                            'age'                     => $age,
+                            'experience'              => '',
+                            'experience_year'         => $experience_year,
+                            'experience_month'        => $experience_month,
+                            'labels'                  => $labels_title,
+                            'salary'                  => $salary,
+                            'currency'                => $currency,
+                            'currency_origin'         => $currency_origin,
+                            'last_profession'         => $last_profession,
+                            'last_employer_title'     => $last_employer_title,
+                            'last_employer_period'    => $last_employer_period,
+                            'date_last_update_origin' => $date_last_update,
+                            'date_last_update'        => $date_last_update,
+                        ];
+                    }
+                }
+            }
         }
 
 
@@ -920,6 +1384,7 @@ abstract class Hh extends Index\Source {
             case '₽':
             case 'руб.':
             case 'руб':
+            case 'RUR':
             case 'рос.руб.': $currency = 'RUB'; break;
             case 'грн':
             case '₴':

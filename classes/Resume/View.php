@@ -81,11 +81,11 @@ class View extends \Common {
             $row->url = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_byn->getValue()) {
-                $row->salary_byn = \Tool::commafy($row->salary_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_byn = \Core2\Tool::commafy($row->salary_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_byn->setAttr('class', 'text-right');
             }
 
-            $row->salary = \Tool::commafy($row->salary->getValue());
+            $row->salary = \Core2\Tool::commafy($row->salary->getValue());
             $row->salary->setAttr('class', 'text-right');
         }
 
@@ -160,11 +160,11 @@ class View extends \Common {
             $row->url = "<a href=\"{$url}\" rel=\"noreferrer\" target=\"_blank\"><i class=\"fa fa-external-link-square\"></i></a>";
 
             if ($row->salary_byn->getValue()) {
-                $row->salary_byn = \Tool::commafy($row->salary_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
+                $row->salary_byn = \Core2\Tool::commafy($row->salary_byn->getValue()) . " <small class=\"text-muted\">BYN</small>";
                 $row->salary_byn->setAttr('class', 'text-right');
             }
 
-            $row->salary = \Tool::commafy($row->salary->getValue());
+            $row->salary = \Core2\Tool::commafy($row->salary->getValue());
             $row->salary->setAttr('class', 'text-right');
         }
 
