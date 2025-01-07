@@ -64,19 +64,11 @@ class NbrbApi extends \Common {
         $response = current($responses);
         $data = ! empty($response['content']) ? @json_decode($response['content'], true) : null;
 
-
-//        $response = $this->client->get($url, [
-//            'timeout'         => 10,
-//            'connect_timeout' => 5
-//        ]);
-//
-//        $data = @json_decode($response->getBody()->getContents(), true);
-
         if (json_last_error() !== JSON_ERROR_NONE || empty($data)) {
             if (empty($response['content'])) {
                 throw new \Exception('Не удалось получить валюты: ' . ($response['error_message'] ?? ''));
             } else {
-                throw new \Exception('Не удалось распознать json ответ от банка');
+                throw new \Exception("Не удалось распознать json ответ от банка: {$url}");
             }
         }
 
@@ -90,7 +82,7 @@ class NbrbApi extends \Common {
                 empty($data['Cur_Scale']) ||
                 empty($data['Cur_OfficialRate'])
             ) {
-                throw new \Exception('Не удалось получить корректный ответ от банка');
+                throw new \Exception("Не удалось получить корректный ответ от банка: {$url}");
             }
 
             $currency_rows[] = [
@@ -111,7 +103,7 @@ class NbrbApi extends \Common {
                 empty($data[0]['Cur_Scale']) ||
                 empty($data[0]['Cur_OfficialRate'])
             ) {
-                throw new \Exception('Не удалось получить корректный ответ от банка');
+                throw new \Exception("Не удалось получить корректный ответ от банка: {$url}");
             }
 
             foreach ($data as $currency_row) {

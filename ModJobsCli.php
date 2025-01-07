@@ -592,6 +592,7 @@ class ModJobsCli extends Common {
                             $page->status = 'process';
                             $page->save();
 
+                            $is_send_mail   = false;
                             $error_messages = [];
 
                             try {
@@ -623,17 +624,20 @@ class ModJobsCli extends Common {
                                         } catch (\Exception $e) {
                                             $this->db->rollback();
                                             $error_messages[] = $e->getMessage() . PHP_EOL . $e->getTraceAsString();
+                                            $is_send_mail = true;
                                         }
                                     }
                                 } else {
                                     if (empty($parse_page['content_correct'])) {
-                                        $error_messages[] = "Резюме не найдены. id =  {$page->id}";
+                                        $error_messages[] = "Резюме не найдены. id = {$page->id}";
                                     }
                                 }
 
 
                                 if ( ! empty($error_messages)) {
-                                    $this->sendErrorMessage('Ошибки при обработке вакансий', $error_messages);
+                                    if ($is_send_mail) {
+                                        $this->sendErrorMessage('Ошибки при обработке вакансий', $error_messages);
+                                    }
 
                                     $page->status = 'error';
                                     $page->note   =  implode(PHP_EOL.PHP_EOL, $error_messages);
